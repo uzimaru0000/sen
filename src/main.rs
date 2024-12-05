@@ -12,6 +12,18 @@ use sen::{
 };
 
 fn main() {
+    let raw = include_bytes!("../fixtures/nestest.nes");
+    let rom = Rom::new(raw).unwrap();
+    let bus = Bus::new(rom);
+    let mut cpu = CPU::new(bus);
+    cpu.reset();
+
+    cpu.run_with_callback(|cpu| {
+        println!("{}", cpu);
+    });
+}
+
+fn run_snake_game() {
     let game_code = include_bytes!("../fixtures/snake.nes");
 
     let sdl_context = sdl2::init().unwrap();
@@ -168,6 +180,32 @@ mod test {
         assert_eq!(
             "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD",
             result[2]
+        );
+    }
+
+    #[test]
+    fn test_format_mem_access() {
+        let mut bus = Bus::new(test_rom());
+        // ORA ($33), Y
+        bus.mem_write(0x64, 0x11);
+        bus.mem_write(0x65, 0x33);
+
+        //data
+        bus.mem_write_u16(0x33, 0x0400);
+
+        //target cell
+        bus.mem_write(0x400, 0xAA);
+
+        let mut cpu = CPU::new(bus);
+        cpu.program_counter = 0x64;
+        cpu.register_y = 0;
+        let mut result: Vec<String> = vec![];
+        cpu.run_with_callback(|cpu| {
+            result.push(format!("{}", cpu));
+        });
+        assert_eq!(
+            "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
+            result[0]
         );
     }
 }

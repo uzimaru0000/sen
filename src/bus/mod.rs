@@ -23,7 +23,7 @@ impl Bus {
     fn read_prg_rom(&self, addr: u16) -> u8 {
         let prog_addr = addr - 0x8000;
         let prog_addr = if self.rom.prg_rom.len() == 0x4000 && prog_addr >= 0x4000 {
-            (prog_addr - 0x8000) % 0x4000
+            prog_addr % 0x4000
         } else {
             prog_addr
         };

@@ -777,18 +777,57 @@ impl<M: Mem> fmt::Display for CPU<M> {
         let (mem_addr, stored_value) = match op.addr_mode {
             AddressingMode::Immediate | AddressingMode::NoneAddressing => (0, 0),
             _ => {
-                let addr = self.get_operand_address(&op.addr_mode);
+                let pc = begin + 1;
+
+                let addr = match op.addr_mode {
+                    AddressingMode::ZeroPage => self.mem_read(pc) as u16,
+                    AddressingMode::ZeroPageX => {
+                        let address = self.mem_read(pc) as u16;
+                        address.wrapping_add(self.register_x as u16)
+                    }
+                    AddressingMode::ZeroPageY => {
+                        let address = self.mem_read(pc) as u16;
+                        address.wrapping_add(self.register_y as u16)
+                    }
+                    AddressingMode::Absolute => self.mem_read_u16(pc),
+                    AddressingMode::AbsoluteX => {
+                        let base = self.mem_read_u16(pc);
+                        base.wrapping_add(self.register_x as u16)
+                    }
+                    AddressingMode::AbsoluteY => {
+                        let base = self.mem_read_u16(pc);
+                        base.wrapping_add(self.register_y as u16)
+                    }
+                    AddressingMode::Indirect => {
+                        let ptr = self.mem_read_u16(pc);
+                        self.mem_read_u16(ptr)
+                    }
+                    AddressingMode::IndirectX => {
+                        let base = self.mem_read(pc);
+
+                        let ptr = (base as u16).wrapping_add(self.register_x as u16);
+                        self.mem_read_u16(ptr)
+                    }
+                    AddressingMode::IndirectY => {
+                        let base = self.mem_read(pc);
+
+                        let deref_base = self.mem_read_u16(base as u16);
+                        deref_base.wrapping_add(self.register_y as u16)
+                    }
+                    _ => 0,
+                };
+
                 (addr, self.mem_read(addr))
             }
         };
 
         let tmp = match op.size {
             1 => match op.code {
-                0x0a | 0x4a | 0x2a | 0x6a => format!("A "),
+                0x0A | 0x4A | 0x2A | 0x6A => format!("A "),
                 _ => String::from(""),
             },
             2 => {
-                let address: u8 = self.mem_read(begin + 1);
+                let address = self.mem_read(begin + 1);
                 hex_dump.push(address);
 
                 match op.addr_mode {
