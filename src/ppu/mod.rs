@@ -215,7 +215,7 @@ impl PPU {
         &self.chr_rom[(bank + idx * 16) as usize..=(bank + idx * 16 + 15) as usize]
     }
 
-    pub fn get_bg_palette(&self, tile_row: usize, tile_column: usize) -> [u8; 4] {
+    pub fn get_bg_palette(&self, tile_column: usize, tile_row: usize) -> [u8; 4] {
         let attr_table_idx = tile_row / 4 * 8 + tile_column / 4;
         // note: still using hardcoded first nametable
         let attr_byte = self.vram[0x03C0 + attr_table_idx];
