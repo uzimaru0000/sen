@@ -20,4 +20,8 @@ impl StatusRegister {
     pub fn is_in_vblank(&self) -> bool {
         self.contains(StatusRegister::VBLANK)
     }
+
+    pub fn set_sprite_zero_hit(&mut self, status: bool) {
+        self.set(StatusRegister::SPRITE_ZERO_HIT, status);
+    }
 }

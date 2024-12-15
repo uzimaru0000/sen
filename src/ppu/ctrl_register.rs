@@ -1,3 +1,5 @@
+use std::result;
+
 use bitflags::bitflags;
 
 bitflags! {
@@ -31,23 +33,24 @@ impl ControlRegister {
     }
 
     pub fn generate_vblank_nmi(&mut self) -> bool {
+        let result = self.contains(Self::GENERATE_NMI);
         self.insert(Self::GENERATE_NMI);
-        self.contains(Self::GENERATE_NMI)
+        result
     }
 
     pub fn background_pattern_addr(&self) -> u16 {
         if self.contains(ControlRegister::BACKGROUND_PATTERN_ADDR) {
-            1
+            0x1000
         } else {
-            0
+            0x0000
         }
     }
 
     pub fn sprite_pattern_addr(&self) -> u16 {
         if self.contains(ControlRegister::SPRITE_PATTERN_ADDR) {
-            1
+            0x1000
         } else {
-            0
+            0x0000
         }
     }
 }

@@ -1,17 +1,20 @@
+use std::{collections::HashMap, fs, path::PathBuf};
+
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
 use sen::{
-    bus::{Mem, NESBus},
+    bus::NESBus,
     cpu::{trace::trace, CPU},
-    palette::Frame,
-    render::render,
+    joypad::button::JoypadButton,
+    render::frame::Frame,
     rom::Rom,
 };
 
 fn main() {
-    run_alter_ego();
+    let args: Vec<String> = std::env::args().collect();
+    run_from_file(args[1].clone().into());
 }
 
-fn run_alter_ego() {
+fn run_from_file(path: PathBuf) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
@@ -29,13 +32,23 @@ fn run_alter_ego() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let raw = include_bytes!("../fixtures/Alter_Ego.nes");
-    let rom = Rom::new(raw).unwrap();
+    let raw = fs::read(path).unwrap();
+    let rom = Rom::new(&raw).unwrap();
 
     let mut frame = Frame::new();
 
-    let bus = NESBus::new(rom, move |ppu| {
-        render(ppu, &mut frame);
+    let mut key_map = HashMap::new();
+    key_map.insert(Keycode::Down, JoypadButton::DOWN);
+    key_map.insert(Keycode::Up, JoypadButton::UP);
+    key_map.insert(Keycode::Right, JoypadButton::RIGHT);
+    key_map.insert(Keycode::Left, JoypadButton::LEFT);
+    key_map.insert(Keycode::Space, JoypadButton::SELECT);
+    key_map.insert(Keycode::Return, JoypadButton::START);
+    key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
+    key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
+
+    let bus = NESBus::new(rom, move |ppu, joypad| {
+        frame.render(ppu);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
         canvas.copy(&texture, None, None).unwrap();
@@ -48,6 +61,19 @@ fn run_alter_ego() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => std::process::exit(0),
+
+                Event::KeyDown { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joypad.set_button_pressed(*key, true);
+                    }
+                }
+
+                Event::KeyUp { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joypad.set_button_pressed(*key, false);
+                    }
+                }
+
                 _ => { /* do nothing */ }
             }
         }
@@ -56,7 +82,7 @@ fn run_alter_ego() {
     let mut cpu = CPU::new(bus);
 
     cpu.reset();
-    cpu.run_with_callback(|cpu, op| {
-        println!("{} {}", op, cpu);
+    cpu.run_with_callback(|_, _| {
+        // eprintln!("{} {}", cpu, op);
     });
 }

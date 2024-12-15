@@ -8,7 +8,7 @@ use sen::{
 fn test_nestest() {
     let raw = include_bytes!("../fixtures/nestest.nes");
     let rom = Rom::new(raw).unwrap();
-    let bus = NESBus::new(rom, move |_| {});
+    let bus = NESBus::new(rom, |_, _| {});
     let mut cpu = CPU::new(bus);
     cpu.reset_with_pc(0xC000);
 

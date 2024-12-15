@@ -1,4 +1,4 @@
-use crate::{ppu::PPU, rom::Rom};
+use crate::{joypad::Joypad, ppu::PPU, rom::Rom};
 
 pub trait Mem {
     fn mem_read(&mut self, addr: u16) -> u8;
@@ -16,26 +16,29 @@ pub trait Bus {
 
 pub struct NESBus<F>
 where
-    F: FnMut(&PPU),
+    F: FnMut(&PPU, &mut Joypad),
 {
     cpu_vram: [u8; 0x0800],
     prg_rom: Vec<u8>,
     ppu: PPU,
+    joypad: Joypad,
     cycles: usize,
     gameloop_callback: F,
 }
 
 impl<F> NESBus<F>
 where
-    F: FnMut(&PPU),
+    F: FnMut(&PPU, &mut Joypad),
 {
     pub fn new(rom: Rom, gameloop_callback: F) -> Self {
         let ppu = PPU::new(rom.chr_rom, rom.screen_mirroring);
+        let joypad = Joypad::new();
 
         Self {
             cpu_vram: [0; 0x0800],
             prg_rom: rom.prg_rom,
             ppu,
+            joypad,
             cycles: 0,
             gameloop_callback,
         }
@@ -66,15 +69,28 @@ const PPU_DATA_REGISTERS: u16 = 0x2007;
 const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 const PPU_OAM_DAM_REGISTERS: u16 = 0x4014;
 
-const APU_REGISTERS: u16 = 0x4000;
-const APU_REGISTERS_MIRRORS_END: u16 = 0x4017;
+const APU_PULSE1_REGISTERS: u16 = 0x4000;
+const APU_PULSE1_REGISTERS_END: u16 = 0x4003;
+const APU_PULSE2_REGISTERS: u16 = 0x4004;
+const APU_PULSE2_REGISTERS_END: u16 = 0x4007;
+const APU_TRIANGLE_REGISTERS: u16 = 0x4008;
+const APU_TRIANGLE_REGISTERS_END: u16 = 0x400B;
+const APU_NOISE_REGISTERS: u16 = 0x400C;
+const APU_NOISE_REGISTERS_END: u16 = 0x400F;
+const APU_DMC_REGISTERS: u16 = 0x4010;
+const APU_DMC_REGISTERS_END: u16 = 0x4013;
+const APU_STATUS_REGISTERS: u16 = 0x4015;
+const APU_FRAME_COUNTER_REGISTERS: u16 = 0x4017;
+
+const JOYPAD1_READ_REGISTERS: u16 = 0x4016;
+const JOYPAD2_READ_REGISTERS: u16 = 0x4017;
 
 const ROM: u16 = 0x8000;
 const ROM_END: u16 = 0xFFFF;
 
 impl<F> Mem for NESBus<F>
 where
-    F: FnMut(&PPU),
+    F: FnMut(&PPU, &mut Joypad),
 {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
@@ -88,21 +104,33 @@ where
             | PPU_SCROLL_REGISTERS
             | PPU_ADDRESS_REGISTERS
             | PPU_OAM_DAM_REGISTERS => {
-                panic!("Attempt to read from write-only PPU address 0x{:X}", addr);
+                println!("Attempt to read from write-only PPU address {:#04X}", addr);
+                0xFF
             }
-            PPU_STATUS_REGISTERS => self.ppu.read_to_status(),
-            PPU_OAM_DATA_REGISTERS => {
-                todo!("PPU OAM data registers are not supported yet")
-            }
-            PPU_DATA_REGISTERS => self.ppu.read_to_data(),
+            PPU_STATUS_REGISTERS => self.ppu.read_status(),
+            PPU_OAM_DATA_REGISTERS => self.ppu.read_oam_data(),
+            PPU_DATA_REGISTERS => self.ppu.read_data(),
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let mirror_down_addr = addr & 0x2007;
                 self.mem_read(mirror_down_addr)
             }
+            APU_PULSE1_REGISTERS..=APU_PULSE1_REGISTERS_END
+            | APU_PULSE2_REGISTERS..=APU_PULSE2_REGISTERS_END
+            | APU_TRIANGLE_REGISTERS..=APU_TRIANGLE_REGISTERS_END
+            | APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END
+            | APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
+                println!("Attempt to read from write-only APU address {:#04X}", addr);
+                0xFF
+            }
             ROM..=ROM_END => self.read_prg_rom(addr),
+            JOYPAD1_READ_REGISTERS => self.joypad.read(),
+            JOYPAD2_READ_REGISTERS => {
+                println!("Ignoring read from joypad 2");
+                0xFF
+            }
             _ => {
-                println!("Ignoring mem access at {}", addr);
-                0
+                println!("Ignoring mem access at {:#04X}", addr);
+                0xFF
             }
         }
     }
@@ -120,10 +148,13 @@ where
                 self.ppu.write_to_mask(data);
             }
             PPU_STATUS_REGISTERS => {
-                panic!("Attempt to write to read-only PPU address 0x{:0X}", addr);
+                panic!("Attempt to write to read-only PPU address {:#04X}", addr);
+            }
+            PPU_OAM_ADDRESS_REGISTERS => {
+                self.ppu.write_to_oam_addr(data);
             }
             PPU_OAM_DATA_REGISTERS => {
-                todo!("PPU OAM data registers are not supported yet")
+                self.ppu.write_to_oam_data(data);
             }
             PPU_SCROLL_REGISTERS => {
                 self.ppu.write_to_scroll(data);
@@ -134,6 +165,15 @@ where
             PPU_DATA_REGISTERS => {
                 self.ppu.write_to_data(data);
             }
+            PPU_OAM_DAM_REGISTERS => {
+                let addr = (data as u16) << 8;
+                let mut data = [0; 256];
+                for i in 0..256 {
+                    data[i] = self.mem_read(addr + i as u16);
+                }
+
+                self.ppu.write_to_oam_dma(&data);
+            }
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let mirror_down_addr = addr & 0x2007;
                 self.mem_write(mirror_down_addr, data);
@@ -141,11 +181,32 @@ where
             ROM..=ROM_END => {
                 panic!("Attempt to write to ROM")
             }
-            APU_REGISTERS..=APU_REGISTERS_MIRRORS_END => {
-                println!("APU registers are not supported yet")
+            APU_PULSE1_REGISTERS..=APU_PULSE1_REGISTERS_END => {
+                eprintln!("Ignoring write to APU pulse 1 registers");
+            }
+            APU_PULSE2_REGISTERS..=APU_PULSE2_REGISTERS_END => {
+                eprintln!("Ignoring write to APU pulse 2 registers");
+            }
+            APU_TRIANGLE_REGISTERS..=APU_TRIANGLE_REGISTERS_END => {
+                eprintln!("Ignoring write to APU triangle registers");
+            }
+            APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END => {
+                eprintln!("Ignoring write to APU noise registers");
+            }
+            APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
+                eprintln!("Ignoring write to APU DMC registers");
+            }
+            APU_STATUS_REGISTERS => {
+                eprintln!("Ignoring write to APU status registers");
+            }
+            APU_FRAME_COUNTER_REGISTERS => {
+                eprintln!("Ignoring write to APU frame counter registers");
+            }
+            JOYPAD1_READ_REGISTERS => {
+                self.joypad.write(data);
             }
             _ => {
-                println!("Ignoring mem write-access at 0x{:0X}", addr);
+                println!("Ignoring mem write-access at {:#04X}", addr);
             }
         }
     }
@@ -166,7 +227,7 @@ where
 
 impl<F> Bus for NESBus<F>
 where
-    F: FnMut(&PPU),
+    F: FnMut(&PPU, &mut Joypad),
 {
     fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;
@@ -176,7 +237,7 @@ where
         let nmi_after = self.ppu.get_nmi_interrupt().is_some();
 
         if !nmi_before && nmi_after {
-            (self.gameloop_callback)(&self.ppu);
+            (self.gameloop_callback)(&self.ppu, &mut self.joypad);
         }
     }
 

@@ -1,6 +1,7 @@
 use addr_register::AddrRegister;
 use ctrl_register::ControlRegister;
 use mask_register::MaskRegister;
+use oam_register::OAMRegister;
 use scroll_register::ScrollRegister;
 use status_register::StatusRegister;
 
@@ -9,6 +10,7 @@ use crate::rom::Mirroring;
 mod addr_register;
 mod ctrl_register;
 mod mask_register;
+mod oam_register;
 mod scroll_register;
 mod status_register;
 
@@ -16,7 +18,7 @@ pub struct PPU {
     chr_rom: Vec<u8>,
     palette_table: [u8; 32],
     vram: [u8; 2048],
-    oam_data: [u8; 256],
+    oam: OAMRegister,
     mirroring: Mirroring,
     ctrl: ControlRegister,
     addr: AddrRegister,
@@ -35,8 +37,8 @@ impl PPU {
             chr_rom,
             palette_table: [0; 32],
             vram: [0; 2048],
-            oam_data: [0; 64 * 4],
             mirroring,
+            oam: OAMRegister::new(),
             addr: AddrRegister::new(),
             ctrl: ControlRegister::new(),
             status: StatusRegister::new(),
@@ -71,13 +73,29 @@ impl PPU {
         self.scroll.update(value);
     }
 
-    pub fn read_to_status(&mut self) -> u8 {
+    pub fn write_to_oam_addr(&mut self, value: u8) {
+        self.oam.write_addr(value);
+    }
+
+    pub fn write_to_oam_data(&mut self, value: u8) {
+        self.oam.write(value);
+    }
+
+    pub fn write_to_oam_dma(&mut self, data: &[u8; 256]) {
+        self.oam.write_dma(data);
+    }
+
+    pub fn read_oam_data(&self) -> u8 {
+        self.oam.read()
+    }
+
+    pub fn read_status(&mut self) -> u8 {
         let status = self.status.bits();
         self.status.set_vblank_status(false);
         status
     }
 
-    pub fn read_to_data(&mut self) -> u8 {
+    pub fn read_data(&mut self) -> u8 {
         let addr = self.addr.get();
         self.increment_vram_addr();
 
@@ -128,20 +146,32 @@ impl PPU {
     pub fn tick(&mut self, cycles: u8) -> bool {
         self.cycles += cycles as usize;
         if self.cycles >= 341 {
+            if self.is_sprite_zero_hit(self.cycles) {
+                self.status.set_sprite_zero_hit(true);
+            }
+
             self.cycles -= 341;
             self.scanline += 1;
 
-            if self.scanline == 241 && self.ctrl.generate_vblank_nmi() {
-                self.status.set_vblank_status(true);
-                self.nmi_interrupt = Some(true);
-                return true;
+            if self.scanline == 241 {
+                self.status.set_sprite_zero_hit(false);
+
+                if self.ctrl.generate_vblank_nmi() {
+                    self.status.set_vblank_status(true);
+                    self.nmi_interrupt = Some(true);
+                }
             }
 
             if self.scanline >= 262 {
                 self.scanline = 0;
+                self.status.set_sprite_zero_hit(false);
                 self.status.set_vblank_status(false);
                 self.nmi_interrupt = None;
                 return true;
+            }
+
+            if self.scanline == 257 {
+                self.oam.reset_addr();
             }
         }
 
@@ -164,18 +194,6 @@ impl PPU {
         self.ctrl.sprite_pattern_addr()
     }
 
-    pub fn get_vram(&self) -> &[u8; 2048] {
-        &self.vram
-    }
-
-    pub fn get_chr_rom(&self) -> &[u8] {
-        &self.chr_rom
-    }
-
-    pub fn get_pallette_table(&self) -> &[u8; 32] {
-        &self.palette_table
-    }
-
     pub fn get_scanline(&self) -> u16 {
         self.scanline
     }
@@ -184,18 +202,71 @@ impl PPU {
         self.cycles
     }
 
+    pub fn get_oam_data(&self) -> &[u8; 256] {
+        &self.oam.data
+    }
+
+    pub fn get_bg_tile(&self, bank: u16, idx: usize) -> &[u8] {
+        let tile = self.vram[idx] as u16;
+        &self.chr_rom[(bank + tile * 16) as usize..=(bank + tile * 16 + 15) as usize]
+    }
+
+    pub fn get_sprite_tile(&self, bank: u16, idx: u16) -> &[u8] {
+        &self.chr_rom[(bank + idx * 16) as usize..=(bank + idx * 16 + 15) as usize]
+    }
+
+    pub fn get_bg_palette(&self, tile_row: usize, tile_column: usize) -> [u8; 4] {
+        let attr_table_idx = tile_row / 4 * 8 + tile_column / 4;
+        // note: still using hardcoded first nametable
+        let attr_byte = self.vram[0x03C0 + attr_table_idx];
+
+        let pallet_idx = match (tile_column % 4 / 2, tile_row % 4 / 2) {
+            (0, 0) => attr_byte & 0b11,
+            (1, 0) => (attr_byte >> 2) & 0b11,
+            (0, 1) => (attr_byte >> 4) & 0b11,
+            (1, 1) => (attr_byte >> 6) & 0b11,
+            (_, _) => panic!("should not happen"),
+        };
+
+        let palette_start = 1 + (pallet_idx as usize) * 4;
+        [
+            self.palette_table[0],
+            self.palette_table[palette_start],
+            self.palette_table[palette_start + 1],
+            self.palette_table[palette_start + 2],
+        ]
+    }
+
+    pub fn get_sprite_palette(&self, palette_idx: u8) -> [u8; 4] {
+        let palette_start = 0x11 + (palette_idx * 4) as usize;
+        [
+            0,
+            self.palette_table[palette_start],
+            self.palette_table[palette_start + 1],
+            self.palette_table[palette_start + 2],
+        ]
+    }
+
     fn mirror_vram_addr(&self, addr: u16) -> u16 {
         let mirrored_vram = addr & 0x2FFF;
         let vram_index = mirrored_vram - 0x2000;
         let name_table = vram_index / 0x400;
 
         match (&self.mirroring, name_table) {
-            (Mirroring::Vertical, 2) | (Mirroring::Vertical, 3) => vram_index - 0x800,
+            (Mirroring::Vertical, 2) => vram_index - 0x800,
+            (Mirroring::Vertical, 3) => vram_index - 0x800,
             (Mirroring::Horizontal, 2) => vram_index - 0x400,
             (Mirroring::Horizontal, 1) => vram_index - 0x400,
             (Mirroring::Horizontal, 3) => vram_index - 0x800,
             _ => vram_index,
         }
+    }
+
+    fn is_sprite_zero_hit(&self, cycle: usize) -> bool {
+        let y = self.oam.data[0] as usize;
+        let x = self.oam.data[3] as usize;
+
+        (y == self.scanline as usize) && x <= cycle && self.mask.is_show_sprites()
     }
 
     fn increment_vram_addr(&mut self) {
@@ -219,8 +290,8 @@ mod test {
         ppu.write_to_addr(0x24);
 
         // NOTE: internal_data_buf に前回の結果が入るので、一度読み込んでおく
-        ppu.read_to_data();
-        let data = ppu.read_to_data();
+        ppu.read_data();
+        let data = ppu.read_data();
         assert_eq!(data, 0x42);
     }
 }

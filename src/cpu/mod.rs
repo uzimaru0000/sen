@@ -439,6 +439,7 @@ impl<M: Mem + Bus> CPU<M> {
                 "SRE" => {
                     self.lsr(&op.addr_mode);
                     self.eor(&op.addr_mode);
+                    self.program_counter += (op.size - 1) as u16;
 
                     0
                 }

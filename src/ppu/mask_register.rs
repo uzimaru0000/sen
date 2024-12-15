@@ -21,4 +21,8 @@ impl MaskRegister {
     pub fn update(&mut self, value: u8) {
         *self.0.bits_mut() = value;
     }
+
+    pub fn is_show_sprites(&self) -> bool {
+        self.contains(Self::SHOW_SPRITES)
+    }
 }

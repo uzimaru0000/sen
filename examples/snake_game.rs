@@ -32,7 +32,7 @@ fn main() {
         .unwrap();
 
     let rom = Rom::new(game_code).unwrap();
-    let bus = NESBus::new(rom, |_| {});
+    let bus = NESBus::new(rom, |_, _| {});
     let mut cpu = CPU::new(bus);
     cpu.reset();
 
