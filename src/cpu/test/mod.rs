@@ -83,7 +83,7 @@ impl Bus for TestBus {
         // NOTE: 何もしない
     }
 
-    fn poll_nmi_status(&self) -> Option<bool> {
+    fn poll_nmi_status(&mut self) -> Option<bool> {
         // NOTE: 何もしない
         None
     }
@@ -130,7 +130,7 @@ where
 
         (self.initialize)(&mut cpu);
 
-        cpu.run_with_callback(|_| {});
+        cpu.run_with_callback(|_, _| {});
 
         (self.assert)(&mut cpu)
     }

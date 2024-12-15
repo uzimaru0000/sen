@@ -1,5 +1,7 @@
+use std::fmt::Display;
+
 use addressing_mode::AddressingMode;
-use opecode::OPCODE_MAP;
+use opecode::{OpCode, OPCODE_MAP};
 use status::ProcessorStatus;
 
 use crate::bus::{Bus, Mem};
@@ -79,19 +81,19 @@ impl<M: Mem + Bus> CPU<M> {
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
-        F: FnMut(&mut CPU<M>),
+        F: FnMut(&mut CPU<M>, &OpCode),
     {
         loop {
             if let Some(_nmi) = self.bus.poll_nmi_status() {
                 self.interrupt_nmi();
             }
 
-            callback(self);
-
             let opcode = self.mem_read(self.program_counter);
-            self.program_counter += 1;
-
             let op = OPCODE_MAP.get(&opcode).unwrap();
+
+            callback(self, op);
+
+            self.program_counter += 1;
 
             let additional_cycle = match op.name {
                 "ADC" => {
@@ -437,7 +439,6 @@ impl<M: Mem + Bus> CPU<M> {
                 "SRE" => {
                     self.lsr(&op.addr_mode);
                     self.eor(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
 
                     0
                 }
@@ -932,7 +933,7 @@ impl<M: Mem + Bus> CPU<M> {
                 let base = self.mem_read(self.program_counter);
 
                 let lo = self.mem_read(base as u16);
-                let hi = self.mem_read((base.wrapping_add(1) & 0xFF) as u16);
+                let hi = self.mem_read((base.wrapping_add(1)) as u16);
                 let deref_base = (hi as u16) << 8 | lo as u16;
                 let addr = deref_base.wrapping_add(self.register_y as u16);
 
@@ -976,5 +977,22 @@ impl<M: Mem + Bus> CPU<M> {
 
     fn check_page_crossed(&self, addr1: u16, addr2: u16) -> bool {
         addr1 & 0xFF00 != addr2 & 0xFF00
+    }
+}
+
+impl<M: Mem + Bus> Display for CPU<M> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status: u8 = self.status.into();
+
+        write!(
+            f,
+            "PC:{:04X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+            self.program_counter,
+            self.register_a,
+            self.register_x,
+            self.register_y,
+            status,
+            self.stack_pointer
+        )
     }
 }

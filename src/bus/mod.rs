@@ -9,7 +9,7 @@ pub trait Mem {
 
 pub trait Bus {
     fn tick(&mut self, cycles: u8);
-    fn poll_nmi_status(&self) -> Option<bool>;
+    fn poll_nmi_status(&mut self) -> Option<bool>;
     fn get_cycles(&self) -> (usize, usize);
     fn get_scanline(&self) -> u16;
 }
@@ -88,7 +88,7 @@ where
             | PPU_SCROLL_REGISTERS
             | PPU_ADDRESS_REGISTERS
             | PPU_OAM_DAM_REGISTERS => {
-                panic!("Attempt to read from write-only PPU address 0x{:0X}", addr);
+                panic!("Attempt to read from write-only PPU address 0x{:X}", addr);
             }
             PPU_STATUS_REGISTERS => self.ppu.read_to_status(),
             PPU_OAM_DATA_REGISTERS => {
@@ -100,9 +100,6 @@ where
                 self.mem_read(mirror_down_addr)
             }
             ROM..=ROM_END => self.read_prg_rom(addr),
-            APU_REGISTERS..=APU_REGISTERS_MIRRORS_END => {
-                panic!("Attempt to read from APU registers at 0x{:0X}", addr);
-            }
             _ => {
                 println!("Ignoring mem access at {}", addr);
                 0
@@ -183,8 +180,11 @@ where
         }
     }
 
-    fn poll_nmi_status(&self) -> Option<bool> {
-        self.ppu.get_nmi_interrupt()
+    fn poll_nmi_status(&mut self) -> Option<bool> {
+        let nmi = self.ppu.get_nmi_interrupt();
+        self.ppu.clear_nmi_interrupt();
+
+        nmi
     }
 
     fn get_cycles(&self) -> (usize, usize) {

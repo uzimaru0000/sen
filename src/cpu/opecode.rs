@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use once_cell::sync::Lazy;
 
@@ -22,6 +22,20 @@ impl OpCode {
             cycles,
             addr_mode,
         }
+    }
+}
+
+impl Display for OpCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:#04X} NAME:{} SIZE:{} CYC:{} ADDR:{:>14}",
+            self.code,
+            self.name,
+            self.size,
+            self.cycles,
+            format!("{:?}", self.addr_mode)
+        )
     }
 }
 

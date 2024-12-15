@@ -104,11 +104,15 @@ impl PPU {
     pub fn write_to_data(&mut self, value: u8) {
         let addr = self.addr.get();
         match addr {
-            0..=0x1FFF => panic!("attempt to write to chr rom space {}", addr),
+            0..=0x1FFF => {
+                // NOP
+            }
             0x2000..=0x2FFF => {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
             }
-            0x3000..=0x3EFF => unimplemented!("addr {} shouldn't be used in reallity", addr),
+            0x3000..=0x3EFF => {
+                // NOP
+            }
             0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
                 let add_mirror = addr - 0x10;
                 self.palette_table[(add_mirror - 0x3F00) as usize] = value;
@@ -166,6 +170,10 @@ impl PPU {
 
     pub fn get_chr_rom(&self) -> &[u8] {
         &self.chr_rom
+    }
+
+    pub fn get_pallette_table(&self) -> &[u8; 32] {
+        &self.palette_table
     }
 
     pub fn get_scanline(&self) -> u16 {
