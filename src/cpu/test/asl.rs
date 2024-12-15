@@ -48,7 +48,7 @@ use test_case::test_case;
 fn test_asl(
     code: Vec<u8>,
     init: fn(cpu: &mut TestCPU) -> (),
-    assert: fn(&TestCPU) -> (u8, bool, bool, bool),
+    assert: fn(&mut TestCPU) -> (u8, bool, bool, bool),
 ) -> (u8, bool, bool, bool) {
     CPUTest::new(code, init, assert).run()
 }

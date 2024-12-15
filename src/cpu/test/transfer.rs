@@ -4,19 +4,19 @@ use test_case::test_case;
 
 type TestResult = (u8, bool, bool);
 
-fn assert_x_register(cpu: &TestCPU) -> TestResult {
+fn assert_x_register(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_x, cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_y_register(cpu: &TestCPU) -> TestResult {
+fn assert_y_register(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_y, cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_a_register(cpu: &TestCPU) -> TestResult {
+fn assert_a_register(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_a, cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_stack_pointer(cpu: &TestCPU) -> TestResult {
+fn assert_stack_pointer(cpu: &mut TestCPU) -> TestResult {
     (cpu.stack_pointer, cpu.status.zero, cpu.status.negative)
 }
 
@@ -71,7 +71,7 @@ fn assert_stack_pointer(cpu: &TestCPU) -> TestResult {
 fn test_tmp(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

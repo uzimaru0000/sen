@@ -30,7 +30,10 @@ mod status;
 mod store;
 mod transfer;
 
-use crate::{bus::Mem, cpu::CPU};
+use crate::{
+    bus::{Bus, Mem},
+    cpu::CPU,
+};
 
 use super::{addressing_mode::AddressingMode, opecode::CPU_OPCODE};
 
@@ -48,7 +51,7 @@ impl TestBus {
 }
 
 impl Mem for TestBus {
-    fn mem_read(&self, addr: u16) -> u8 {
+    fn mem_read(&mut self, addr: u16) -> u8 {
         self.mem[addr as usize]
     }
 
@@ -56,7 +59,7 @@ impl Mem for TestBus {
         self.mem[addr as usize] = data;
     }
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         // NOTE: ProgramCounter の初期化のために決め打ちで 0x0000 を返す
         if addr == 0xFFFC {
             return 0x8000;
@@ -75,12 +78,31 @@ impl Mem for TestBus {
     }
 }
 
+impl Bus for TestBus {
+    fn tick(&mut self, _cycles: u8) {
+        // NOTE: 何もしない
+    }
+
+    fn poll_nmi_status(&self) -> Option<bool> {
+        // NOTE: 何もしない
+        None
+    }
+
+    fn get_cycles(&self) -> (usize, usize) {
+        (0, 0)
+    }
+
+    fn get_scanline(&self) -> u16 {
+        0
+    }
+}
+
 pub(self) type TestCPU = CPU<TestBus>;
 
 pub(self) struct CPUTest<F, G, R>
 where
     F: FnMut(&mut TestCPU) -> (),
-    G: FnMut(&TestCPU) -> R,
+    G: FnMut(&mut TestCPU) -> R,
 {
     code: Vec<u8>,
     initialize: F,
@@ -90,7 +112,7 @@ where
 impl<F, G, R> CPUTest<F, G, R>
 where
     F: FnMut(&mut TestCPU) -> (),
-    G: FnMut(&TestCPU) -> R,
+    G: FnMut(&mut TestCPU) -> R,
 {
     pub(super) fn new(code: Vec<u8>, initialize: F, assert: G) -> Self {
         Self {

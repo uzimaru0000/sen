@@ -5,15 +5,15 @@ use test_case::test_case;
 
 type TestResult = (u8, bool, bool);
 
-fn assert_dec(cpu: &TestCPU) -> TestResult {
+fn assert_dec(cpu: &mut TestCPU) -> TestResult {
     (cpu.mem_read(0x10), cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_dex(cpu: &TestCPU) -> TestResult {
+fn assert_dex(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_x, cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_dey(cpu: &TestCPU) -> TestResult {
+fn assert_dey(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_y, cpu.status.zero, cpu.status.negative)
 }
 
@@ -44,7 +44,7 @@ fn assert_dey(cpu: &TestCPU) -> TestResult {
 fn test_dec(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

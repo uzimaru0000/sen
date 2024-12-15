@@ -2,7 +2,7 @@
 pub struct ProcessorStatus {
     pub negative: bool,
     pub overflow: bool,
-    pub none: bool,
+    pub break2_command: bool,
     pub break_command: bool,
     pub decimal: bool,
     pub interrupt: bool,
@@ -15,7 +15,7 @@ impl ProcessorStatus {
         ProcessorStatus {
             negative: false,
             overflow: false,
-            none: true,
+            break2_command: true,
             break_command: false,
             decimal: false,
             interrupt: false,
@@ -52,8 +52,8 @@ impl ProcessorStatus {
         self.decimal = value;
     }
 
-    pub fn set_none(&mut self, value: bool) {
-        self.none = value;
+    pub fn set_break2_command(&mut self, value: bool) {
+        self.break2_command = value;
     }
 }
 
@@ -62,7 +62,7 @@ impl From<u8> for ProcessorStatus {
         Self {
             negative: value & 0x80 != 0,
             overflow: value & 0x40 != 0,
-            none: value & 0x20 != 0,
+            break2_command: value & 0x20 != 0,
             break_command: value & 0x10 != 0,
             decimal: value & 0x08 != 0,
             interrupt: value & 0x04 != 0,
@@ -81,7 +81,7 @@ impl Into<u8> for ProcessorStatus {
         if self.overflow {
             value |= 0x40;
         }
-        if self.none {
+        if self.break2_command {
             value |= 0x20;
         }
         if self.break_command {
@@ -111,7 +111,7 @@ mod test {
         let status = super::ProcessorStatus::from(value);
         assert_eq!(status.negative, true, "Negative flag is not set");
         assert_eq!(status.overflow, true, "Overflow flag is not set");
-        assert_eq!(status.none, false, "None flag is set");
+        assert_eq!(status.break2_command, false, "Break2 command flag is set");
         assert_eq!(status.break_command, false, "Break command flag is set");
         assert_eq!(status.decimal, false, "Decimal flag is set");
         assert_eq!(status.interrupt, false, "Interrupt flag is set");
@@ -124,7 +124,7 @@ mod test {
         let status = super::ProcessorStatus {
             negative: true,
             overflow: true,
-            none: false,
+            break2_command: false,
             break_command: false,
             decimal: false,
             interrupt: false,

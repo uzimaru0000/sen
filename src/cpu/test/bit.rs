@@ -5,7 +5,7 @@ use test_case::test_case;
 
 type TestResult = (bool, bool, bool);
 
-fn assert(cpu: &TestCPU) -> TestResult {
+fn assert(cpu: &mut TestCPU) -> TestResult {
     (cpu.status.negative, cpu.status.overflow, cpu.status.zero)
 }
 
@@ -30,7 +30,7 @@ fn assert(cpu: &TestCPU) -> TestResult {
 fn test_bit(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

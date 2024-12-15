@@ -1,10 +1,10 @@
 use super::{get_opecode, CPUTest, TestCPU};
-use crate::cpu::{addressing_mode::AddressingMode, CPU};
+use crate::cpu::addressing_mode::AddressingMode;
 use test_case::test_case;
 
 type ResultType = (u8, bool, bool, bool, bool);
 
-fn assert(cpu: &TestCPU) -> ResultType {
+fn assert(cpu: &mut TestCPU) -> ResultType {
     (
         cpu.register_a,
         cpu.status.zero,
@@ -56,7 +56,7 @@ fn assert(cpu: &TestCPU) -> ResultType {
 fn test_adc(
     code: Vec<u8>,
     init: fn(cpu: &mut TestCPU) -> (),
-    assert: fn(&TestCPU) -> ResultType,
+    assert: fn(&mut TestCPU) -> ResultType,
 ) -> ResultType {
     CPUTest::new(code, init, assert).run()
 }

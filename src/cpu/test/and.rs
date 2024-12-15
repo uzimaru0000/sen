@@ -80,10 +80,26 @@ use test_case::test_case;
     |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x88, false, true);
     "indirect_y"
 )]
+#[test_case(
+    vec![
+        get_opecode("PHP", AddressingMode::NoneAddressing),
+        get_opecode("PLA", AddressingMode::NoneAddressing),
+        get_opecode("AND", AddressingMode::Immediate), 0xEF,
+        get_opecode("BRK", AddressingMode::NoneAddressing),
+    ],
+    |cpu| {
+        cpu.register_a = 0x00;
+        cpu.register_x = 0x00;
+        cpu.register_y = 0x00;
+        cpu.status = 0x6F.into();
+    },
+    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x6F, false, false);
+    "pull_status_from_stack"
+)]
 fn test_and(
     code: Vec<u8>,
     init: fn(cpu: &mut TestCPU) -> (),
-    assert: fn(&TestCPU) -> (u8, bool, bool),
+    assert: fn(&mut TestCPU) -> (u8, bool, bool),
 ) -> (u8, bool, bool) {
     CPUTest::new(code, init, assert).run()
 }

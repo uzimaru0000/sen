@@ -5,15 +5,15 @@ use test_case::test_case;
 
 type TestResult = (u8, bool, bool);
 
-fn assert_inc(cpu: &TestCPU) -> TestResult {
+fn assert_inc(cpu: &mut TestCPU) -> TestResult {
     (cpu.mem_read(0x10), cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_inx(cpu: &TestCPU) -> TestResult {
+fn assert_inx(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_x, cpu.status.zero, cpu.status.negative)
 }
 
-fn assert_iny(cpu: &TestCPU) -> TestResult {
+fn assert_iny(cpu: &mut TestCPU) -> TestResult {
     (cpu.register_y, cpu.status.zero, cpu.status.negative)
 }
 
@@ -44,7 +44,7 @@ fn assert_iny(cpu: &TestCPU) -> TestResult {
 fn test_inc(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

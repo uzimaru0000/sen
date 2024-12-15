@@ -63,7 +63,7 @@ type TestResult = bool;
 fn test_status(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

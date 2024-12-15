@@ -5,7 +5,7 @@ use test_case::test_case;
 
 type TestResult = u8;
 
-fn assert(cpu: &TestCPU) -> TestResult {
+fn assert(cpu: &mut TestCPU) -> TestResult {
     cpu.register_x
 }
 
@@ -37,7 +37,7 @@ fn assert(cpu: &TestCPU) -> TestResult {
 fn test_jmp(
     code: Vec<u8>,
     initialize: fn(&mut TestCPU),
-    assert: fn(&TestCPU) -> TestResult,
+    assert: fn(&mut TestCPU) -> TestResult,
 ) -> TestResult {
     CPUTest::new(code, initialize, assert).run()
 }

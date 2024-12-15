@@ -3,7 +3,7 @@ use crate::bus::Mem;
 use crate::cpu::addressing_mode::AddressingMode;
 use test_case::test_case;
 
-fn assert(cpu: &TestCPU) -> (u8, bool, bool) {
+fn assert(cpu: &mut TestCPU) -> (u8, bool, bool) {
     (cpu.register_a, cpu.status.zero, cpu.status.negative)
 }
 
@@ -66,7 +66,7 @@ fn assert(cpu: &TestCPU) -> (u8, bool, bool) {
 fn test_lda(
     code: Vec<u8>,
     init: fn(cpu: &mut TestCPU) -> (),
-    assert: fn(&TestCPU) -> (u8, bool, bool),
+    assert: fn(&mut TestCPU) -> (u8, bool, bool),
 ) -> (u8, bool, bool) {
     CPUTest::new(code, init, assert).run()
 }
