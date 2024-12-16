@@ -134,7 +134,7 @@ impl PPU {
                 if self.is_chr_ram {
                     self.chr_rom[addr as usize] = value;
                 } else {
-                    panic!("CHR-ROM is read-only");
+                    eprintln!("CHR-ROM is read-only");
                 }
             }
             0x2000..=0x2FFF => {
