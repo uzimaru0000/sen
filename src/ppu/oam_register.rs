@@ -12,7 +12,10 @@ impl OAMRegister {
     }
 
     pub fn write_dma(&mut self, data: &[u8; 256]) {
-        self.data = *data;
+        for x in data.iter() {
+            self.data[self.addr as usize] = *x;
+            self.addr = self.addr.wrapping_add(1);
+        }
     }
 
     pub fn write(&mut self, data: u8) {

@@ -91,7 +91,7 @@ impl PPU {
 
     pub fn read_status(&mut self) -> u8 {
         let status = self.status.bits();
-        // self.status.set_vblank_status(false);
+        self.status.set_vblank_status(false);
         self.addr.reset_latch();
         self.scroll.reset_latch();
         status
@@ -162,7 +162,6 @@ impl PPU {
             if self.scanline == 241 {
                 self.status.set_vblank_status(true);
                 self.status.set_sprite_zero_hit(false);
-
                 if self.ctrl.generate_vblank_nmi() {
                     self.nmi_interrupt = Some(true);
                 }

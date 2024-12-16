@@ -135,13 +135,21 @@ impl<M: Mem + Bus> CPU<M> {
                 "BNE" => self.branch(!self.status.zero),
                 "BPL" => self.branch(!self.status.negative),
                 "BRK" => {
-                    self.stack_push_u16(self.program_counter);
-                    self.stack_push(self.status.into());
+                    if !self.status.interrupt {
+                        self.stack_push_u16(self.program_counter);
+                        let mut flag = self.status.clone();
+                        flag.set_break2_command(true);
+                        flag.set_break_command(true);
 
-                    self.program_counter = self.mem_read_u16(0xFFFE);
-                    self.status.set_break_command(true);
+                        self.stack_push(flag.into());
+                        self.status.set_interrupt(true);
 
-                    0
+                        self.program_counter = self.mem_read_u16(0xFFFE);
+
+                        1
+                    } else {
+                        0
+                    }
                 }
                 "BVC" => self.branch(!self.status.overflow),
                 "BVS" => self.branch(self.status.overflow),
