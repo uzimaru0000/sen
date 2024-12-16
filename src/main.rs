@@ -1,13 +1,7 @@
 use std::{collections::HashMap, fs, path::PathBuf};
 
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
-use sen::{
-    bus::NESBus,
-    cpu::{trace::trace, CPU},
-    joypad::button::JoypadButton,
-    render::frame::Frame,
-    rom::Rom,
-};
+use sen::{bus::NESBus, cpu::CPU, joypad::button::JoypadButton, render::frame::Frame, rom::Rom};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -82,7 +76,7 @@ fn run_from_file(path: PathBuf) {
     let mut cpu = CPU::new(bus);
 
     cpu.reset();
-    cpu.run_with_callback(|_, _| {
-        // eprintln!("{} {}", cpu, op);
+    cpu.run_with_callback(|cpu, op| {
+        eprintln!("{} {}", cpu, op);
     });
 }

@@ -1,5 +1,3 @@
-use std::result;
-
 use bitflags::bitflags;
 
 bitflags! {
@@ -36,6 +34,16 @@ impl ControlRegister {
         let result = self.contains(Self::GENERATE_NMI);
         self.insert(Self::GENERATE_NMI);
         result
+    }
+
+    pub fn name_table_addr(&self) -> u16 {
+        match self.bits() & 0b11 {
+            0b00 => 0x2000,
+            0b01 => 0x2400,
+            0b10 => 0x2800,
+            0b11 => 0x2C00,
+            _ => unreachable!(),
+        }
     }
 
     pub fn background_pattern_addr(&self) -> u16 {

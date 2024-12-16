@@ -1,6 +1,6 @@
 use crate::ppu::PPU;
 
-use super::palette::SYSTEM_PALETTE;
+use super::{palette::SYSTEM_PALETTE, rect::Rect};
 
 pub struct Frame {
     pub data: Vec<u8>,
@@ -26,30 +26,67 @@ impl Frame {
     }
 
     pub fn render(&mut self, ppu: &PPU) {
-        self.render_bg(ppu);
+        let (scroll_x, scroll_y) = ppu.get_scroll();
+
+        let (main_name_table, sub_name_table) = ppu.get_name_table();
+
+        self.render_bg(
+            ppu,
+            main_name_table,
+            Rect::new(scroll_x as usize, scroll_y as usize, 256, 240),
+            -(scroll_x as isize),
+            -(scroll_y as isize),
+        );
+        self.render_bg(
+            ppu,
+            sub_name_table,
+            Rect::new(0, 0, scroll_x as usize, 240),
+            (256 - scroll_x as usize) as isize,
+            0,
+        );
         self.render_sprite(ppu);
     }
 
-    fn render_bg(&mut self, ppu: &PPU) {
+    fn render_bg(
+        &mut self,
+        ppu: &PPU,
+        name_table: &[u8],
+        view_port: Rect,
+        shift_x: isize,
+        shift_y: isize,
+    ) {
         let bank = ppu.background_pattern_addr();
+        let attr_table = &name_table[0x3C0..0x400];
 
-        for i in 0..0x03C0 {
-            let tile = ppu.get_bg_tile(bank, i);
-            let tile_x = i % 32;
-            let tile_y = i / 32;
-            let palette = ppu.get_bg_palette(tile_x, tile_y);
+        for i in 0..0x3C0 {
+            let tile_column = i % 32;
+            let tile_row = i / 32;
+            let tile_idx = name_table[i] as u16;
+            // TODO: ↓ get_sprite_tile じゃないほうが良さそう
+            let tile = ppu.get_sprite_tile(bank, tile_idx);
+            let palette = ppu.get_bg_palette(attr_table, tile_column, tile_row);
 
             for y in 0..=7 {
                 let mut upper = tile[y];
                 let mut lower = tile[y + 8];
 
                 for x in (0..=7).rev() {
-                    let value = (1 & upper) << 1 | (1 & lower);
+                    let value = (1 & lower) << 1 | (1 & upper);
                     upper = upper >> 1;
                     lower = lower >> 1;
                     let palette_idx = palette[value as usize] as usize;
                     let rgb = SYSTEM_PALETTE[palette_idx];
-                    self.set_pixel(tile_x * 8 + x, tile_y * 8 + y, rgb);
+
+                    let pixel_x = tile_column * 8 + x;
+                    let pixel_y = tile_row * 8 + y;
+
+                    if view_port.with_in(pixel_x, pixel_y) {
+                        self.set_pixel(
+                            (shift_x + pixel_x as isize) as usize,
+                            (shift_y + pixel_y as isize) as usize,
+                            rgb,
+                        );
+                    }
                 }
             }
         }

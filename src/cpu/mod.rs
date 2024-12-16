@@ -93,12 +93,12 @@ impl<M: Mem + Bus> CPU<M> {
 
             callback(self, op);
 
-            self.program_counter += 1;
+            self.program_counter = self.program_counter.wrapping_add(1);
 
             let additional_cycle = match op.name {
                 "ADC" => {
                     let is_crossed_page = self.adc(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -108,7 +108,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "AND" => {
                     let is_crossed_page = self.and(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -118,7 +118,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "ASL" => {
                     self.asl(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -127,7 +127,7 @@ impl<M: Mem + Bus> CPU<M> {
                 "BEQ" => self.branch(self.status.zero),
                 "BIT" => {
                     self.bit(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -167,7 +167,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "CMP" => {
                     let is_crossed_page = self.cmp(self.register_a, &op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -177,26 +177,26 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "CPX" => {
                     self.cmp(self.register_x, &op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "CPY" => {
                     self.cmp(self.register_y, &op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "DCP" => {
                     self.dec(&op.addr_mode);
                     self.cmp(self.register_a, &op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "DEC" => {
                     self.dec(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -212,7 +212,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "EOR" => {
                     let is_crossed_page = self.eor(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -222,7 +222,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "INC" => {
                     self.inc(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -239,7 +239,7 @@ impl<M: Mem + Bus> CPU<M> {
                 "ISB" => {
                     self.inc(&op.addr_mode);
                     self.sbc(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -256,7 +256,7 @@ impl<M: Mem + Bus> CPU<M> {
                 "LAX" => {
                     let is_crossed_page = self.lda(&op.addr_mode);
                     self.tax();
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -266,7 +266,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "LDA" => {
                     let is_crossed_page = self.lda(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -276,7 +276,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "LDX" => {
                     let is_crossed_page = self.ldx(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -286,7 +286,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "LDY" => {
                     let is_crossed_page = self.ldy(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -296,7 +296,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "LSR" => {
                     self.lsr(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -306,7 +306,7 @@ impl<M: Mem + Bus> CPU<M> {
                     } else {
                         self.get_operand_address(&op.addr_mode)
                     };
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -316,7 +316,7 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "ORA" => {
                     let is_crossed_page = self.ora(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -347,26 +347,26 @@ impl<M: Mem + Bus> CPU<M> {
                 "RLA" => {
                     self.rol(&op.addr_mode);
                     self.and(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "ROL" => {
                     self.rol(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "ROR" => {
                     self.ror(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "RRA" => {
                     self.ror(&op.addr_mode);
                     self.adc(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
@@ -382,13 +382,13 @@ impl<M: Mem + Bus> CPU<M> {
                 }
                 "SAX" => {
                     self.sax(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "SBC" => {
                     let is_crossed_page = self.sbc(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     if is_crossed_page {
                         1
@@ -414,32 +414,32 @@ impl<M: Mem + Bus> CPU<M> {
                 "SLO" => {
                     self.asl(&op.addr_mode);
                     self.ora(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "STA" => {
                     self.sta(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "STX" => {
                     self.stx(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "STY" => {
                     self.sty(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }
                 "SRE" => {
                     self.lsr(&op.addr_mode);
                     self.eor(&op.addr_mode);
-                    self.program_counter += (op.size - 1) as u16;
+                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
 
                     0
                 }

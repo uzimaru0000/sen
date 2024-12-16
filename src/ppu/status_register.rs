@@ -24,4 +24,8 @@ impl StatusRegister {
     pub fn set_sprite_zero_hit(&mut self, status: bool) {
         self.set(StatusRegister::SPRITE_ZERO_HIT, status);
     }
+
+    pub fn set_sprite_overflow(&mut self, status: bool) {
+        self.set(StatusRegister::SPRITE_OVERFLOW, status);
+    }
 }

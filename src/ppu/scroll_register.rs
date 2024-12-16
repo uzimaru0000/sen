@@ -1,42 +1,32 @@
-enum ScrollDirection {
-    Horizontal,
-    Vertical,
-}
-
 pub struct ScrollRegister {
-    fine_x: u8,
-    fine_y: u8,
     x: u8,
     y: u8,
-    dir: ScrollDirection,
+    latch: bool,
 }
 
 impl ScrollRegister {
     pub fn new() -> Self {
         Self {
-            fine_x: 0,
-            fine_y: 0,
             x: 0,
             y: 0,
-            dir: ScrollDirection::Horizontal,
+            latch: false,
         }
     }
 
     pub fn update(&mut self, value: u8) {
-        match self.dir {
-            ScrollDirection::Horizontal => {
-                self.fine_x = value & 0x07;
-                self.x = value >> 3;
-            }
-            ScrollDirection::Vertical => {
-                self.fine_y = value & 0x07;
-                self.y = value >> 3;
-            }
+        if !self.latch {
+            self.x = value;
+        } else {
+            self.y = value;
         }
+        self.latch = !self.latch;
+    }
 
-        self.dir = match self.dir {
-            ScrollDirection::Horizontal => ScrollDirection::Vertical,
-            ScrollDirection::Vertical => ScrollDirection::Horizontal,
-        };
+    pub fn reset_latch(&mut self) {
+        self.latch = false;
+    }
+
+    pub fn get_scroll(&self) -> (u8, u8) {
+        (self.x, self.y)
     }
 }

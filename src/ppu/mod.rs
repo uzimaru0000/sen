@@ -92,6 +92,8 @@ impl PPU {
     pub fn read_status(&mut self) -> u8 {
         let status = self.status.bits();
         self.status.set_vblank_status(false);
+        self.addr.reset_latch();
+        self.scroll.reset_latch();
         status
     }
 
@@ -154,10 +156,10 @@ impl PPU {
             self.scanline += 1;
 
             if self.scanline == 241 {
+                self.status.set_vblank_status(true);
                 self.status.set_sprite_zero_hit(false);
 
                 if self.ctrl.generate_vblank_nmi() {
-                    self.status.set_vblank_status(true);
                     self.nmi_interrupt = Some(true);
                 }
             }
@@ -206,6 +208,30 @@ impl PPU {
         &self.oam.data
     }
 
+    pub fn get_scroll(&self) -> (u8, u8) {
+        self.scroll.get_scroll()
+    }
+
+    pub fn get_name_table(&self) -> (&[u8], &[u8]) {
+        match (&self.mirroring, self.ctrl.name_table_addr()) {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) => {
+                (&self.vram[0x0000..0x0400], &self.vram[0x0400..0x0800])
+            }
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) => {
+                (&self.vram[0x0400..0x0800], &self.vram[0x0000..0x0400])
+            }
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (&self.vram[0x0000..0x0400], &self.vram[0x0400..0x0800])
+            }
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                (&self.vram[0x0400..0x0800], &self.vram[0x0000..0x0400])
+            }
+            (_, _) => {
+                panic!("Not supported mirroring type {:?}", self.mirroring);
+            }
+        }
+    }
+
     pub fn get_bg_tile(&self, bank: u16, idx: usize) -> &[u8] {
         let tile = self.vram[idx] as u16;
         &self.chr_rom[(bank + tile * 16) as usize..=(bank + tile * 16 + 15) as usize]
@@ -215,10 +241,14 @@ impl PPU {
         &self.chr_rom[(bank + idx * 16) as usize..=(bank + idx * 16 + 15) as usize]
     }
 
-    pub fn get_bg_palette(&self, tile_column: usize, tile_row: usize) -> [u8; 4] {
+    pub fn get_bg_palette(
+        &self,
+        attr_table: &[u8],
+        tile_column: usize,
+        tile_row: usize,
+    ) -> [u8; 4] {
         let attr_table_idx = tile_row / 4 * 8 + tile_column / 4;
-        // note: still using hardcoded first nametable
-        let attr_byte = self.vram[0x03C0 + attr_table_idx];
+        let attr_byte = attr_table[attr_table_idx];
 
         let pallet_idx = match (tile_column % 4 / 2, tile_row % 4 / 2) {
             (0, 0) => attr_byte & 0b11,
