@@ -24,7 +24,7 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
     let (mem_addr, stored_value) = match op.addr_mode {
         AddressingMode::Immediate | AddressingMode::NoneAddressing => (0, 0),
         _ => {
-            let (addr, _) = cpu.get_absolute_address(&op.addr_mode, begin + 1);
+            let (addr, _) = cpu.get_absolute_address(&op.addr_mode, begin.wrapping_add(1));
 
             if !NON_READABLE_ADDR.contains(&addr) {
                 (addr, cpu.mem_read(addr))
@@ -40,7 +40,7 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
             _ => String::from(""),
         },
         2 => {
-            let address = cpu.mem_read(begin + 1);
+            let address = cpu.mem_read(begin.wrapping_add(1));
             hex_dump.push(address);
 
             match op.addr_mode {
@@ -82,12 +82,12 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
             }
         }
         3 => {
-            let address_lo = cpu.mem_read(begin + 1);
-            let address_hi = cpu.mem_read(begin + 2);
+            let address_lo = cpu.mem_read(begin.wrapping_add(1));
+            let address_hi = cpu.mem_read(begin.wrapping_add(2));
             hex_dump.push(address_lo);
             hex_dump.push(address_hi);
 
-            let address = cpu.mem_read_u16(begin + 1);
+            let address = cpu.mem_read_u16(begin.wrapping_add(1));
 
             match op.addr_mode {
                 AddressingMode::NoneAddressing => {

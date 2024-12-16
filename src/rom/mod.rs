@@ -25,11 +25,6 @@ impl Rom {
 
         let mapper = (raw[7] & 0xF0) | (raw[6] >> 4);
 
-        let ines_ver = (raw[7] >> 2) & 0b11;
-        if ines_ver != 0 {
-            return Err("NES2.0 format is not supported".to_string());
-        }
-
         let four_screen = raw[6] & 0x08 != 0;
         let vertical_mirroring = raw[6] & 0x01 != 0;
         let screen_mirroring = match (four_screen, vertical_mirroring) {

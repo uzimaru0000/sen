@@ -89,7 +89,13 @@ impl<M: Mem + Bus> CPU<M> {
             }
 
             let opcode = self.mem_read(self.program_counter);
-            let op = OPCODE_MAP.get(&opcode).unwrap();
+            let op = OPCODE_MAP.get(&opcode);
+
+            if op.is_none() {
+                panic!("Unknown opcode: {:02X}", opcode);
+            }
+
+            let op = op.unwrap();
 
             callback(self, op);
 
@@ -647,7 +653,7 @@ impl<M: Mem + Bus> CPU<M> {
     fn jsr(&mut self, mode: &AddressingMode) {
         let (addr, _) = self.get_operand_address(mode);
 
-        self.stack_push_u16(self.program_counter + 2 - 1);
+        self.stack_push_u16(self.program_counter.wrapping_add(1));
         self.program_counter = addr;
     }
 
