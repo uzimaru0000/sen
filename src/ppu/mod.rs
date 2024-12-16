@@ -91,7 +91,7 @@ impl PPU {
 
     pub fn read_status(&mut self) -> u8 {
         let status = self.status.bits();
-        self.status.set_vblank_status(false);
+        // self.status.set_vblank_status(false);
         self.addr.reset_latch();
         self.scroll.reset_latch();
         status
@@ -113,7 +113,7 @@ impl PPU {
                 result
             }
             0x3000..=0x3EFF => panic!(
-                "addr space 0x3000..0x3EFF is not expected to be used, requested = {} ",
+                "addr space 0x3000..0x3EFF is not expected to be used, requested = {:#04X} ",
                 addr
             ),
             0x3F00..=0x3FFF => self.palette_table[(addr - 0x3F00) as usize],
@@ -131,7 +131,7 @@ impl PPU {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
             }
             0x3000..=0x3EFF => {
-                // NOP
+                self.vram[self.mirror_vram_addr(addr) as usize] = value;
             }
             0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
                 let add_mirror = addr - 0x10;

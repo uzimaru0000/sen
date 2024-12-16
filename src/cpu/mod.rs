@@ -948,18 +948,17 @@ impl<M: Mem + Bus> CPU<M> {
         let offset = self.mem_read(self.program_counter) as i8;
         self.program_counter += 1;
 
-        if cond {
-            let new_pc = self.program_counter.wrapping_add(offset as u16);
-            let old_pc = self.program_counter;
-            self.program_counter = new_pc;
+        if !cond {
+            return 0;
+        }
 
-            if self.check_page_crossed(old_pc, new_pc) {
-                2
-            } else {
-                1
-            }
+        let old_pc = self.program_counter;
+        self.program_counter = self.program_counter.wrapping_add(offset as u16);
+
+        if self.check_page_crossed(old_pc, self.program_counter) {
+            2
         } else {
-            0
+            1
         }
     }
 
