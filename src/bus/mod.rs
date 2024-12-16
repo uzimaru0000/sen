@@ -31,7 +31,7 @@ where
     F: FnMut(&PPU, &mut Joypad),
 {
     pub fn new(rom: Rom, gameloop_callback: F) -> Self {
-        let ppu = PPU::new(rom.chr_rom, rom.screen_mirroring);
+        let ppu = PPU::new(rom.chr_rom, rom.is_chr_ram, rom.screen_mirroring);
         let joypad = Joypad::new();
 
         Self {

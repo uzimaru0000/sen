@@ -15,6 +15,7 @@ mod scroll_register;
 mod status_register;
 
 pub struct PPU {
+    is_chr_ram: bool,
     chr_rom: Vec<u8>,
     palette_table: [u8; 32],
     vram: [u8; 2048],
@@ -32,8 +33,9 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(chr_rom: Vec<u8>, mirroring: Mirroring) -> Self {
+    pub fn new(chr_rom: Vec<u8>, is_chr_ram: bool, mirroring: Mirroring) -> Self {
         Self {
+            is_chr_ram,
             chr_rom,
             palette_table: [0; 32],
             vram: [0; 2048],
@@ -129,7 +131,11 @@ impl PPU {
         let addr = self.addr.get();
         match addr {
             0..=0x1FFF => {
-                eprintln!("attempt to write to chr rom space {:#04X}", addr);
+                if self.is_chr_ram {
+                    self.chr_rom[addr as usize] = value;
+                } else {
+                    panic!("CHR-ROM is read-only");
+                }
             }
             0x2000..=0x2FFF => {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
@@ -316,7 +322,7 @@ mod test {
     #[test]
     fn test_read_data() {
         let chr_rom = vec![0; 0x2000];
-        let mut ppu = PPU::new(chr_rom, Mirroring::Horizontal);
+        let mut ppu = PPU::new(chr_rom, false, Mirroring::Horizontal);
 
         ppu.vram[0x0024] = 0x42;
         ppu.write_to_addr(0x20);
