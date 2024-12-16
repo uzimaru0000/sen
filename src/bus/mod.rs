@@ -104,8 +104,8 @@ where
             | PPU_SCROLL_REGISTERS
             | PPU_ADDRESS_REGISTERS
             | PPU_OAM_DAM_REGISTERS => {
-                println!("Attempt to read from write-only PPU address {:#04X}", addr);
-                0xFF
+                eprintln!("Attempt to read from write-only PPU address {:#04X}", addr);
+                0
             }
             PPU_STATUS_REGISTERS => self.ppu.read_status(),
             PPU_OAM_DATA_REGISTERS => self.ppu.read_oam_data(),
@@ -119,18 +119,17 @@ where
             | APU_TRIANGLE_REGISTERS..=APU_TRIANGLE_REGISTERS_END
             | APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END
             | APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
-                println!("Attempt to read from write-only APU address {:#04X}", addr);
-                0xFF
+                eprintln!("Attempt to read from write-only APU address {:#04X}", addr);
+                0
             }
             ROM..=ROM_END => self.read_prg_rom(addr),
             JOYPAD1_READ_REGISTERS => self.joypad.read(),
             JOYPAD2_READ_REGISTERS => {
-                println!("Ignoring read from joypad 2");
-                0xFF
+                todo!("Ignoring read from joypad 2");
             }
             _ => {
-                println!("Ignoring mem access at {:#04X}", addr);
-                0xFF
+                eprintln!("Ignoring mem access at {:#04X}", addr);
+                0
             }
         }
     }

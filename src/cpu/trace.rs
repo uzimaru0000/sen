@@ -1,9 +1,17 @@
+use once_cell::sync::Lazy;
+
 use crate::{
     bus::{Bus, Mem},
     cpu::{addressing_mode::AddressingMode, opecode::OPCODE_MAP, CPU},
 };
 
 use super::opecode::{OpCode, UNOFFICIAL_OPCODE};
+
+const NON_READABLE_ADDR: Lazy<Vec<u16>> = Lazy::new(|| {
+    vec![
+        0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x4016, 0x4017,
+    ]
+});
 
 pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
     let code = cpu.mem_read(cpu.program_counter);
@@ -16,64 +24,13 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
     let (mem_addr, stored_value) = match op.addr_mode {
         AddressingMode::Immediate | AddressingMode::NoneAddressing => (0, 0),
         _ => {
-            let pc = begin + 1;
+            let (addr, _) = cpu.get_absolute_address(&op.addr_mode, begin + 1);
 
-            let addr = match op.addr_mode {
-                AddressingMode::ZeroPage => cpu.mem_read(pc) as u16,
-                AddressingMode::ZeroPageX => {
-                    let address = cpu.mem_read(pc) as u16;
-                    address.wrapping_add(cpu.register_x as u16) & 0xFF
-                }
-                AddressingMode::ZeroPageY => {
-                    let address = cpu.mem_read(pc) as u16;
-                    address.wrapping_add(cpu.register_y as u16) & 0xFF
-                }
-                AddressingMode::Absolute => cpu.mem_read_u16(pc),
-                AddressingMode::AbsoluteX => {
-                    let base = cpu.mem_read_u16(pc);
-                    base.wrapping_add(cpu.register_x as u16)
-                }
-                AddressingMode::AbsoluteY => {
-                    let base = cpu.mem_read_u16(pc);
-                    base.wrapping_add(cpu.register_y as u16)
-                }
-                AddressingMode::Indirect => {
-                    if op.name == "JMP" {
-                        let ptr = cpu.mem_read_u16(pc);
-
-                        let lo = cpu.mem_read(ptr);
-                        let hi = cpu.mem_read(if ptr & 0xFF == 0xFF {
-                            ptr & 0xFF00
-                        } else {
-                            ptr + 1
-                        });
-                        (hi as u16) << 8 | lo as u16
-                    } else {
-                        let ptr = cpu.mem_read_u16(pc);
-                        cpu.mem_read_u16(ptr)
-                    }
-                }
-                AddressingMode::IndirectX => {
-                    let base = cpu.mem_read(pc);
-
-                    let ptr = (base as u16).wrapping_add(cpu.register_x as u16) & 0xFF;
-                    let lo = cpu.mem_read(ptr);
-                    let hi = cpu.mem_read(ptr.wrapping_add(1) & 0xFF);
-
-                    (hi as u16) << 8 | lo as u16
-                }
-                AddressingMode::IndirectY => {
-                    let base = cpu.mem_read(pc);
-
-                    let lo = cpu.mem_read(base as u16);
-                    let hi = cpu.mem_read((base.wrapping_add(1) & 0xFF) as u16);
-                    let deref_base = (hi as u16) << 8 | lo as u16;
-                    deref_base.wrapping_add(cpu.register_y as u16)
-                }
-                _ => 0,
-            };
-
-            (addr, cpu.mem_read(addr))
+            if !NON_READABLE_ADDR.contains(&addr) {
+                (addr, cpu.mem_read(addr))
+            } else {
+                (0, 0)
+            }
         }
     };
 

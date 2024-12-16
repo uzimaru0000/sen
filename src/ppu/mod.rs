@@ -116,6 +116,10 @@ impl PPU {
                 "addr space 0x3000..0x3EFF is not expected to be used, requested = {:#04X} ",
                 addr
             ),
+            0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
+                let addr_mirror = addr - 0x10;
+                self.palette_table[(addr_mirror - 0x3F00) as usize]
+            }
             0x3F00..=0x3FFF => self.palette_table[(addr - 0x3F00) as usize],
             _ => panic!("unexpected access to mirrored space {}", addr),
         }
@@ -125,7 +129,7 @@ impl PPU {
         let addr = self.addr.get();
         match addr {
             0..=0x1FFF => {
-                // NOP
+                eprintln!("attempt to write to chr rom space {:#04X}", addr);
             }
             0x2000..=0x2FFF => {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
@@ -134,8 +138,8 @@ impl PPU {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
             }
             0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
-                let add_mirror = addr - 0x10;
-                self.palette_table[(add_mirror - 0x3F00) as usize] = value;
+                let addr_mirror = addr - 0x10;
+                self.palette_table[(addr_mirror - 0x3F00) as usize] = value;
             }
             0x3F00..=0x3FFF => {
                 self.palette_table[(addr - 0x3F00) as usize] = value;

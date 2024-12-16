@@ -83,6 +83,6 @@ fn run_from_file(path: PathBuf) {
 
     cpu.reset();
     cpu.run_with_callback(|cpu, _| {
-        // println!("{}", trace(cpu));
+        println!("{}", trace(cpu));
     });
 }
