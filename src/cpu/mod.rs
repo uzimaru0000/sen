@@ -137,21 +137,22 @@ impl<M: Mem + Bus> CPU<M> {
                 "BNE" => self.branch(!self.status.zero),
                 "BPL" => self.branch(!self.status.negative),
                 "BRK" => {
-                    if !self.status.interrupt {
-                        self.stack_push_u16(self.program_counter);
-                        let mut flag = self.status.clone();
-                        flag.set_break2_command(true);
-                        flag.set_break_command(true);
+                    // if !self.status.interrupt {
+                    //     self.stack_push_u16(self.program_counter);
+                    //     let mut flag = self.status.clone();
+                    //     flag.set_break2_command(true);
+                    //     flag.set_break_command(true);
 
-                        self.stack_push(flag.into());
-                        self.status.set_interrupt(true);
+                    //     self.stack_push(flag.into());
+                    //     self.status.set_interrupt(true);
 
-                        self.program_counter = self.mem_read_u16(0xFFFE);
+                    //     self.program_counter = self.mem_read_u16(0xFFFE);
 
-                        1
-                    } else {
-                        0
-                    }
+                    //     1
+                    // } else {
+                    //     0
+                    // }
+                    return;
                 }
                 "BVC" => self.branch(!self.status.overflow),
                 "BVS" => self.branch(self.status.overflow),
@@ -648,8 +649,7 @@ impl<M: Mem + Bus> CPU<M> {
 
     fn jsr(&mut self, mode: &AddressingMode) {
         let (addr, _) = self.get_operand_address(mode);
-
-        self.stack_push_u16(self.program_counter.wrapping_add(1));
+        self.stack_push_u16(self.program_counter + 2 - 1);
         self.program_counter = addr;
     }
 

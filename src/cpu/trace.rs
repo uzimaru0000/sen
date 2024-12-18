@@ -109,7 +109,21 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
                     address, mem_addr, stored_value
                 ),
                 AddressingMode::Indirect => {
-                    format!("(${:04x}) = {:04x}", address, mem_addr)
+                    if op.name == "JMP" {
+                        let ptr = cpu.mem_read_u16(begin.wrapping_add(1));
+
+                        let lo = cpu.mem_read(ptr);
+                        let hi = cpu.mem_read(if ptr & 0xFF == 0xFF {
+                            ptr & 0xFF00
+                        } else {
+                            ptr + 1
+                        });
+                        let addr = (hi as u16) << 8 | lo as u16;
+
+                        format!("(${:04x}) = {:04x}", ptr, addr)
+                    } else {
+                        format!("(${:04x}) = {:04x}", address, mem_addr)
+                    }
                 }
                 _ => panic!(
                     "unexpected addressing mode {:?} has ops-len 3. code {:02x}",

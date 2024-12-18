@@ -120,7 +120,7 @@ where
             | APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END
             | APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
                 eprintln!("Attempt to read from write-only APU address {:#04X}", addr);
-                0
+                0xFF
             }
             ROM..=ROM_END => self.read_prg_rom(addr),
             JOYPAD1_READ_REGISTERS => self.joypad.read(),
@@ -129,7 +129,7 @@ where
             }
             _ => {
                 eprintln!("Ignoring mem access at {:#04X}", addr);
-                0
+                0xFF
             }
         }
     }
@@ -147,7 +147,7 @@ where
                 self.ppu.write_to_mask(data);
             }
             PPU_STATUS_REGISTERS => {
-                panic!("Attempt to write to read-only PPU address {:#04X}", addr);
+                eprintln!("Ignoring write to PPU status registers");
             }
             PPU_OAM_ADDRESS_REGISTERS => {
                 self.ppu.write_to_oam_addr(data);
