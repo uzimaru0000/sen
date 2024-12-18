@@ -241,10 +241,7 @@ where
     }
 
     fn poll_nmi_status(&mut self) -> Option<bool> {
-        let nmi = self.ppu.get_nmi_interrupt();
-        self.ppu.clear_nmi_interrupt();
-
-        nmi
+        self.ppu.poll_nmi_interrupt()
     }
 
     fn get_cycles(&self) -> (usize, usize) {

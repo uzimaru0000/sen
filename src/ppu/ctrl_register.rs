@@ -18,22 +18,20 @@ impl ControlRegister {
         Self::from_bits_truncate(0b0000_0000)
     }
 
+    pub fn update(&mut self, data: u8) {
+        *self.0.bits_mut() = data;
+    }
+
+    pub fn generate_vblank_nmi(&mut self) -> bool {
+        self.contains(Self::GENERATE_NMI)
+    }
+
     pub fn vram_addr_increment(&self) -> u8 {
         if self.contains(ControlRegister::VRAM_ADD_INCREMENT) {
             32
         } else {
             1
         }
-    }
-
-    pub fn update(&mut self, data: u8) {
-        *self.0.bits_mut() = data;
-    }
-
-    pub fn generate_vblank_nmi(&mut self) -> bool {
-        let result = self.contains(Self::GENERATE_NMI);
-        self.insert(Self::GENERATE_NMI);
-        result
     }
 
     pub fn name_table_addr(&self) -> u16 {

@@ -96,6 +96,7 @@ impl PPU {
         self.status.set_vblank_status(false);
         self.addr.reset_latch();
         self.scroll.reset_latch();
+
         status
     }
 
@@ -180,10 +181,6 @@ impl PPU {
                 self.nmi_interrupt = None;
                 return true;
             }
-
-            if self.scanline == 257 {
-                self.oam.reset_addr();
-            }
         }
 
         false
@@ -193,8 +190,8 @@ impl PPU {
         self.nmi_interrupt
     }
 
-    pub fn clear_nmi_interrupt(&mut self) {
-        self.nmi_interrupt = None;
+    pub fn poll_nmi_interrupt(&mut self) -> Option<bool> {
+        self.nmi_interrupt.take()
     }
 
     pub fn background_pattern_addr(&self) -> u16 {

@@ -91,10 +91,6 @@ impl<M: Mem + Bus> CPU<M> {
             let opcode = self.mem_read(self.program_counter);
             let op = OPCODE_MAP.get(&opcode);
 
-            if op.is_none() {
-                panic!("Unknown opcode: {:02X}", opcode);
-            }
-
             let op = op.unwrap();
 
             callback(self, op);

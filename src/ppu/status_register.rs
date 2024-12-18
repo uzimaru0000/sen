@@ -17,15 +17,15 @@ impl StatusRegister {
         self.set(StatusRegister::VBLANK, status);
     }
 
-    pub fn is_in_vblank(&self) -> bool {
-        self.contains(StatusRegister::VBLANK)
-    }
-
     pub fn set_sprite_zero_hit(&mut self, status: bool) {
         self.set(StatusRegister::SPRITE_ZERO_HIT, status);
     }
 
     pub fn set_sprite_overflow(&mut self, status: bool) {
         self.set(StatusRegister::SPRITE_OVERFLOW, status);
+    }
+
+    pub fn is_in_vblank(&self) -> bool {
+        self.contains(StatusRegister::VBLANK)
     }
 }
