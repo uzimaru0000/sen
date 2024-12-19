@@ -149,7 +149,8 @@ impl PPU {
                 self.palette_table[(addr_mirror - 0x3F00) as usize] = value;
             }
             0x3F00..=0x3FFF => {
-                self.palette_table[(addr - 0x3F00) as usize] = value;
+                let index = (addr - 0x3F00) & 0x1F;
+                self.palette_table[index as usize] = value;
             }
             _ => panic!("unexpected access to mirrored space {}", addr),
         }
