@@ -7,6 +7,7 @@ use sen::{
     joypad::button::JoypadButton,
     render::frame::Frame,
     rom::Rom,
+    speaker::{sdl::SdlSpeaker, silent::SilentSpeaker},
 };
 
 fn main() {
@@ -35,6 +36,8 @@ fn run_from_file(path: PathBuf) {
     let raw = fs::read(path).unwrap();
     let rom = Rom::new(&raw).unwrap();
 
+    let speaker = SdlSpeaker::new(&sdl_context);
+
     let mut frame = Frame::new();
 
     let mut key_map = HashMap::new();
@@ -47,7 +50,7 @@ fn run_from_file(path: PathBuf) {
     key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
     key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
 
-    let bus = NESBus::new(rom, move |ppu, joypad| {
+    let bus = NESBus::new(rom, speaker, move |ppu, joypad| {
         frame.render(ppu);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 

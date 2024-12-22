@@ -2,13 +2,15 @@ use sen::{
     bus::NESBus,
     cpu::{trace::trace, CPU},
     rom::Rom,
+    speaker::silent::SilentSpeaker,
 };
 
 #[test]
 fn test_nestest() {
     let raw = include_bytes!("../fixtures/nestest.nes");
     let rom = Rom::new(raw).unwrap();
-    let bus = NESBus::new(rom, |_, _| {});
+    let speaker = SilentSpeaker::new();
+    let bus = NESBus::new(rom, speaker, |_, _| {});
     let mut cpu = CPU::new(bus);
     cpu.reset_with_pc(0xC000);
 

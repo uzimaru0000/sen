@@ -1,4 +1,4 @@
-use crate::{joypad::Joypad, ppu::PPU, rom::Rom};
+use crate::{apu::APU, joypad::Joypad, ppu::PPU, rom::Rom, speaker::Speaker};
 
 pub trait Mem {
     fn mem_read(&mut self, addr: u16) -> u8;
@@ -14,30 +14,35 @@ pub trait Bus {
     fn get_scanline(&self) -> u16;
 }
 
-pub struct NESBus<F>
+pub struct NESBus<F, S>
 where
     F: FnMut(&PPU, &mut Joypad),
+    S: Speaker,
 {
     cpu_vram: [u8; 0x0800],
     prg_rom: Vec<u8>,
     ppu: PPU,
+    apu: APU<S>,
     joypad: Joypad,
     cycles: usize,
     gameloop_callback: F,
 }
 
-impl<F> NESBus<F>
+impl<F, S> NESBus<F, S>
 where
     F: FnMut(&PPU, &mut Joypad),
+    S: Speaker,
 {
-    pub fn new(rom: Rom, gameloop_callback: F) -> Self {
+    pub fn new(rom: Rom, speaker: S, gameloop_callback: F) -> Self {
         let ppu = PPU::new(rom.chr_rom, rom.is_chr_ram, rom.screen_mirroring);
+        let apu = APU::new(speaker);
         let joypad = Joypad::new();
 
         Self {
             cpu_vram: [0; 0x0800],
             prg_rom: rom.prg_rom,
             ppu,
+            apu,
             joypad,
             cycles: 0,
             gameloop_callback,
@@ -69,18 +74,8 @@ const PPU_DATA_REGISTERS: u16 = 0x2007;
 const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 const PPU_OAM_DAM_REGISTERS: u16 = 0x4014;
 
-const APU_PULSE1_REGISTERS: u16 = 0x4000;
-const APU_PULSE1_REGISTERS_END: u16 = 0x4003;
-const APU_PULSE2_REGISTERS: u16 = 0x4004;
-const APU_PULSE2_REGISTERS_END: u16 = 0x4007;
-const APU_TRIANGLE_REGISTERS: u16 = 0x4008;
-const APU_TRIANGLE_REGISTERS_END: u16 = 0x400B;
-const APU_NOISE_REGISTERS: u16 = 0x400C;
-const APU_NOISE_REGISTERS_END: u16 = 0x400F;
-const APU_DMC_REGISTERS: u16 = 0x4010;
-const APU_DMC_REGISTERS_END: u16 = 0x4013;
-const APU_STATUS_REGISTERS: u16 = 0x4015;
-const APU_FRAME_COUNTER_REGISTERS: u16 = 0x4017;
+const APU: u16 = 0x4000;
+const APU_END: u16 = 0x4017;
 
 const JOYPAD1_READ_REGISTERS: u16 = 0x4016;
 const JOYPAD2_READ_REGISTERS: u16 = 0x4017;
@@ -88,9 +83,10 @@ const JOYPAD2_READ_REGISTERS: u16 = 0x4017;
 const ROM: u16 = 0x8000;
 const ROM_END: u16 = 0xFFFF;
 
-impl<F> Mem for NESBus<F>
+impl<F, S> Mem for NESBus<F, S>
 where
     F: FnMut(&PPU, &mut Joypad),
+    S: Speaker,
 {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
@@ -114,19 +110,12 @@ where
                 let mirror_down_addr = addr & 0x2007;
                 self.mem_read(mirror_down_addr)
             }
-            APU_PULSE1_REGISTERS..=APU_PULSE1_REGISTERS_END
-            | APU_PULSE2_REGISTERS..=APU_PULSE2_REGISTERS_END
-            | APU_TRIANGLE_REGISTERS..=APU_TRIANGLE_REGISTERS_END
-            | APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END
-            | APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
-                eprintln!("Attempt to read from write-only APU address {:#04X}", addr);
-                0xFF
-            }
-            ROM..=ROM_END => self.read_prg_rom(addr),
             JOYPAD1_READ_REGISTERS => self.joypad.read(),
             JOYPAD2_READ_REGISTERS => {
                 todo!("Ignoring read from joypad 2");
             }
+            APU..=APU_END => self.apu.read(addr),
+            ROM..=ROM_END => self.read_prg_rom(addr),
             _ => {
                 eprintln!("Ignoring mem access at {:#04X}", addr);
                 0xFF
@@ -178,31 +167,13 @@ where
                 self.mem_write(mirror_down_addr, data);
             }
             ROM..=ROM_END => {
-                panic!("Attempt to write to ROM")
-            }
-            APU_PULSE1_REGISTERS..=APU_PULSE1_REGISTERS_END => {
-                eprintln!("Ignoring write to APU pulse 1 registers");
-            }
-            APU_PULSE2_REGISTERS..=APU_PULSE2_REGISTERS_END => {
-                eprintln!("Ignoring write to APU pulse 2 registers");
-            }
-            APU_TRIANGLE_REGISTERS..=APU_TRIANGLE_REGISTERS_END => {
-                eprintln!("Ignoring write to APU triangle registers");
-            }
-            APU_NOISE_REGISTERS..=APU_NOISE_REGISTERS_END => {
-                eprintln!("Ignoring write to APU noise registers");
-            }
-            APU_DMC_REGISTERS..=APU_DMC_REGISTERS_END => {
-                eprintln!("Ignoring write to APU DMC registers");
-            }
-            APU_STATUS_REGISTERS => {
-                eprintln!("Ignoring write to APU status registers");
-            }
-            APU_FRAME_COUNTER_REGISTERS => {
-                eprintln!("Ignoring write to APU frame counter registers");
+                eprintln!("Ignoring write to ROM at {:#04X}", addr);
             }
             JOYPAD1_READ_REGISTERS => {
                 self.joypad.write(data);
+            }
+            APU..=APU_END => {
+                self.apu.write(addr, data);
             }
             _ => {
                 println!("Ignoring mem write-access at {:#04X}", addr);
@@ -224,9 +195,10 @@ where
     }
 }
 
-impl<F> Bus for NESBus<F>
+impl<F, S> Bus for NESBus<F, S>
 where
     F: FnMut(&PPU, &mut Joypad),
+    S: Speaker,
 {
     fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;

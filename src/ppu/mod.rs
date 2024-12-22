@@ -144,13 +144,8 @@ impl PPU {
             0x3000..=0x3EFF => {
                 self.vram[self.mirror_vram_addr(addr) as usize] = value;
             }
-            0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
-                let addr_mirror = addr - 0x10;
-                self.palette_table[(addr_mirror - 0x3F00) as usize] = value;
-            }
             0x3F00..=0x3FFF => {
-                let index = (addr - 0x3F00) & 0x1F;
-                self.palette_table[index as usize] = value;
+                self.palette_table[self.mirror_palette_addr(addr) as usize] = value;
             }
             _ => panic!("unexpected access to mirrored space {}", addr),
         }
@@ -296,6 +291,14 @@ impl PPU {
             (Mirroring::Horizontal, 1) => vram_index - 0x400,
             (Mirroring::Horizontal, 3) => vram_index - 0x800,
             _ => vram_index,
+        }
+    }
+
+    fn mirror_palette_addr(&self, addr: u16) -> u16 {
+        match addr {
+            0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => (addr - 0x10) - 0x3F00,
+            0x3F00..=0x3F1F => addr - 0x3F00,
+            _ => self.mirror_palette_addr(addr & 0x3F1F),
         }
     }
 

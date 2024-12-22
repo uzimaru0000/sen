@@ -9,6 +9,7 @@ use sen::{
     bus::{Bus, Mem, NESBus},
     cpu::CPU,
     rom::Rom,
+    speaker::silent::SilentSpeaker,
 };
 
 fn main() {
@@ -32,7 +33,8 @@ fn main() {
         .unwrap();
 
     let rom = Rom::new(game_code).unwrap();
-    let bus = NESBus::new(rom, |_, _| {});
+    let speaker = SilentSpeaker::new();
+    let bus = NESBus::new(rom, speaker, |_, _| {});
     let mut cpu = CPU::new(bus);
     cpu.reset();
 
