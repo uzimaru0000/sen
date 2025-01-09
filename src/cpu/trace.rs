@@ -148,7 +148,7 @@ pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
         .trim()
         .to_string();
 
-    let status: u8 = cpu.status.into();
+    let status: u8 = cpu.status.bits();
     let cpu_state = format!(
         "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x}",
         asm_str, cpu.register_a, cpu.register_x, cpu.register_y, status, cpu.stack_pointer

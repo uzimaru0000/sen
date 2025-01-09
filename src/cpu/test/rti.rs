@@ -6,7 +6,7 @@ use test_case::test_case;
 type TestResult = (u8, u16);
 
 fn assert(cpu: &mut TestCPU) -> TestResult {
-    (cpu.status.into(), cpu.program_counter)
+    (cpu.status.bits(), cpu.program_counter)
 }
 
 #[test_case(

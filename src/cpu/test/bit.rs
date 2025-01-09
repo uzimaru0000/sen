@@ -1,12 +1,17 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::bus::Mem;
 use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 type TestResult = (bool, bool, bool);
 
 fn assert(cpu: &mut TestCPU) -> TestResult {
-    (cpu.status.negative, cpu.status.overflow, cpu.status.zero)
+    (
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+        cpu.status.contains(ProcessorStatus::OVERFLOW),
+        cpu.status.contains(ProcessorStatus::ZERO),
+    )
 }
 
 #[test_case(

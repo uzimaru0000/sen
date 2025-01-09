@@ -1,13 +1,9 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
-use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
+use sdl2::pixels::PixelFormatEnum;
 use sen::{
-    bus::NESBus,
-    cpu::{trace::trace, CPU},
-    joypad::button::JoypadButton,
-    render::frame::Frame,
-    rom::Rom,
-    speaker::{sdl::SdlSpeaker, silent::SilentSpeaker},
+    bus::NESBus, cpu::CPU, joypad::sdl2::Sdl2JoypadHandler, render::sdl2::Sdl2Renderer, rom::Rom,
+    speaker::sdl::SdlSpeaker,
 };
 
 fn main() {
@@ -25,11 +21,11 @@ fn run_from_file(path: PathBuf) {
         .unwrap();
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
-    let mut event_pump = sdl_context.event_pump().unwrap();
+    let event_pump = sdl_context.event_pump().unwrap();
     canvas.set_scale(5.0, 5.0).unwrap();
 
     let creator = canvas.texture_creator();
-    let mut texture = creator
+    let texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
@@ -37,55 +33,14 @@ fn run_from_file(path: PathBuf) {
     let rom = Rom::new(&raw).unwrap();
 
     let speaker = SdlSpeaker::new(&sdl_context);
-
-    let mut frame = Frame::new();
-
-    let mut key_map = HashMap::new();
-    key_map.insert(Keycode::Down, JoypadButton::DOWN);
-    key_map.insert(Keycode::Up, JoypadButton::UP);
-    key_map.insert(Keycode::Right, JoypadButton::RIGHT);
-    key_map.insert(Keycode::Left, JoypadButton::LEFT);
-    key_map.insert(Keycode::Space, JoypadButton::SELECT);
-    key_map.insert(Keycode::Return, JoypadButton::START);
-    key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
-    key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
-
-    let bus = NESBus::new(rom, speaker, move |ppu, joypad| {
-        frame.render(ppu);
-        texture.update(None, &frame.data, 256 * 3).unwrap();
-
-        canvas.copy(&texture, None, None).unwrap();
-
-        canvas.present();
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => std::process::exit(0),
-
-                Event::KeyDown { keycode, .. } => {
-                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        joypad.set_button_pressed(*key, true);
-                    }
-                }
-
-                Event::KeyUp { keycode, .. } => {
-                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        joypad.set_button_pressed(*key, false);
-                    }
-                }
-
-                _ => { /* do nothing */ }
-            }
-        }
-    });
+    let joypad_handler = Sdl2JoypadHandler::new(event_pump);
+    let renderer = Sdl2Renderer::new(canvas, texture);
+    let bus = NESBus::new(rom, speaker, joypad_handler, renderer);
 
     let mut cpu = CPU::new(bus);
 
     cpu.reset();
-    cpu.run_with_callback(|cpu, _| {
+    cpu.run_with_callback(|cpu| {
         // println!("{}", trace(cpu));
     });
 }

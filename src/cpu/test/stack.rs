@@ -1,5 +1,6 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 type TestResult = u8;
@@ -35,7 +36,7 @@ fn assert(cpu: &mut TestCPU) -> TestResult {
         0x00
     ],
     |cpu| {
-        cpu.status = (0b1100_0000 as u8).into();
+        cpu.status = ProcessorStatus::from_bits_truncate(0b1100_0000);
     },
     assert => 0xFC;
     "push_processor_status"
@@ -48,7 +49,7 @@ fn assert(cpu: &mut TestCPU) -> TestResult {
         0x00
     ],
     |cpu| {
-        cpu.status = (0b1100_0000 as u8).into();
+        cpu.status = ProcessorStatus::from_bits_truncate(0b1100_0000);
     },
     assert => 0xFD;
     "pull_processor_status"

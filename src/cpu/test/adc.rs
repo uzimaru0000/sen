@@ -1,5 +1,6 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 type ResultType = (u8, bool, bool, bool, bool);
@@ -7,10 +8,10 @@ type ResultType = (u8, bool, bool, bool, bool);
 fn assert(cpu: &mut TestCPU) -> ResultType {
     (
         cpu.register_a,
-        cpu.status.zero,
-        cpu.status.negative,
-        cpu.status.carry,
-        cpu.status.overflow,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+        cpu.status.contains(ProcessorStatus::CARRY),
+        cpu.status.contains(ProcessorStatus::OVERFLOW),
     )
 }
 

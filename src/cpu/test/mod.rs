@@ -130,7 +130,7 @@ where
 
         (self.initialize)(&mut cpu);
 
-        cpu.run_with_callback(|_, _| {});
+        cpu.run_with_callback(|_| {});
 
         (self.assert)(&mut cpu)
     }

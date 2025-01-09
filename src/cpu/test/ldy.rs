@@ -1,10 +1,15 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::bus::Mem;
 use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 fn assert(cpu: &mut TestCPU) -> (u8, bool, bool) {
-    (cpu.register_y, cpu.status.zero, cpu.status.negative)
+    (
+        cpu.register_y,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+    )
 }
 
 #[test_case(

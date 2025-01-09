@@ -8,6 +8,8 @@ use sdl2::{
 use sen::{
     bus::{Bus, Mem, NESBus},
     cpu::CPU,
+    joypad::dummy::DummyHandler,
+    render::dummy::DummyRenderer,
     rom::Rom,
     speaker::silent::SilentSpeaker,
 };
@@ -34,14 +36,14 @@ fn main() {
 
     let rom = Rom::new(game_code).unwrap();
     let speaker = SilentSpeaker::new();
-    let bus = NESBus::new(rom, speaker, |_, _| {});
+    let bus = NESBus::new(rom, speaker, DummyHandler, DummyRenderer);
     let mut cpu = CPU::new(bus);
     cpu.reset();
 
     let mut screen_state = [0 as u8; 32 * 3 * 32];
     let mut rng = rand::thread_rng();
 
-    cpu.run_with_callback(move |cpu, _| {
+    cpu.run_with_callback(move |cpu| {
         handle_user_input(cpu, &mut event_pump);
         cpu.mem_write(0xFE, rng.gen_range(1..16));
 

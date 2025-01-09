@@ -1,12 +1,13 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::cpu::addressing_mode::AddressingMode;
 use crate::bus::Mem;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 #[test_case(
     vec![get_opecode("AND", AddressingMode::Immediate), 0x01, 0x00],
     |cpu| { cpu.register_a = 0x01; },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "immediate"
 )]
 #[test_case(
@@ -15,7 +16,7 @@ use test_case::test_case;
         cpu.register_a = 0x01; 
         cpu.mem_write(0x10, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "zero_page"
 )]
 #[test_case(
@@ -25,7 +26,7 @@ use test_case::test_case;
         cpu.register_x = 0x01;
         cpu.mem_write(0x11, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "zero_page_x"
 )]
 #[test_case(
@@ -34,7 +35,7 @@ use test_case::test_case;
         cpu.register_a = 0x11;
         cpu.mem_write_u16(0x0110, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "absolute"
 )]
 #[test_case(
@@ -44,7 +45,7 @@ use test_case::test_case;
         cpu.register_x = 0x01;
         cpu.mem_write_u16(0x0111, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "absolute_x"
 )]
 #[test_case(
@@ -54,7 +55,7 @@ use test_case::test_case;
         cpu.register_y = 0x01;
         cpu.mem_write_u16(0x0111, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "absolute_y"
 )]
 #[test_case(
@@ -66,7 +67,7 @@ use test_case::test_case;
         cpu.mem_write_u16(0x11, 0x0100);
         cpu.mem_write_u16(0x0100, 0x01);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x01, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x01, false, false);
     "indirect_x"
 )]
 #[test_case(
@@ -77,7 +78,7 @@ use test_case::test_case;
         cpu.mem_write_u16(0x0010, 0x2000);
         cpu.mem_write(0x2001, 0xCC);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x88, false, true);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x88, false, true);
     "indirect_y"
 )]
 #[test_case(
@@ -91,9 +92,9 @@ use test_case::test_case;
         cpu.register_a = 0x00;
         cpu.register_x = 0x00;
         cpu.register_y = 0x00;
-        cpu.status = 0x6F.into();
+        cpu.status = ProcessorStatus::from_bits_truncate(0x6F);
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.negative) => (0x6F, false, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x6F, false, false);
     "pull_status_from_stack"
 )]
 fn test_and(

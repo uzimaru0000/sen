@@ -1,23 +1,39 @@
 use super::{get_opecode, CPUTest, TestCPU};
-use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::{addressing_mode::AddressingMode, status::ProcessorStatus};
 use test_case::test_case;
 
 type TestResult = (u8, bool, bool);
 
 fn assert_x_register(cpu: &mut TestCPU) -> TestResult {
-    (cpu.register_x, cpu.status.zero, cpu.status.negative)
+    (
+        cpu.register_x,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+    )
 }
 
 fn assert_y_register(cpu: &mut TestCPU) -> TestResult {
-    (cpu.register_y, cpu.status.zero, cpu.status.negative)
+    (
+        cpu.register_y,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+    )
 }
 
 fn assert_a_register(cpu: &mut TestCPU) -> TestResult {
-    (cpu.register_a, cpu.status.zero, cpu.status.negative)
+    (
+        cpu.register_a,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+    )
 }
 
 fn assert_stack_pointer(cpu: &mut TestCPU) -> TestResult {
-    (cpu.stack_pointer, cpu.status.zero, cpu.status.negative)
+    (
+        cpu.stack_pointer,
+        cpu.status.contains(ProcessorStatus::ZERO),
+        cpu.status.contains(ProcessorStatus::NEGATIVE),
+    )
 }
 
 #[test_case(

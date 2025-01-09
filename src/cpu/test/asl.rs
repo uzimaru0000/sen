@@ -1,6 +1,7 @@
 use super::{get_opecode, CPUTest, TestCPU};
 use crate::bus::Mem;
 use crate::cpu::addressing_mode::AddressingMode;
+use crate::cpu::status::ProcessorStatus;
 use test_case::test_case;
 
 #[test_case(
@@ -8,7 +9,7 @@ use test_case::test_case;
     |cpu| {
         cpu.register_a = 0x80;
     },
-    |cpu| (cpu.register_a, cpu.status.zero, cpu.status.carry, cpu.status.negative) => (0x00, true, true, false);
+    |cpu| (cpu.register_a, cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::CARRY), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x00, true, true, false);
     "accumulator"
 )]
 #[test_case(
@@ -16,7 +17,7 @@ use test_case::test_case;
     |cpu| {
         cpu.mem_write(0x10, 0x80);
     },
-    |cpu| (cpu.mem_read(0x10), cpu.status.zero, cpu.status.carry, cpu.status.negative) => (0x00, true, true, false);
+    |cpu| (cpu.mem_read(0x10), cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::CARRY), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x00, true, true, false);
     "zero_page"
 )]
 #[test_case(
@@ -25,7 +26,7 @@ use test_case::test_case;
         cpu.register_x = 0x01;
         cpu.mem_write(0x11, 0x80);
     },
-    |cpu| (cpu.mem_read(0x11), cpu.status.zero, cpu.status.carry, cpu.status.negative) => (0x00, true, true, false);
+    |cpu| (cpu.mem_read(0x11), cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::CARRY), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x00, true, true, false);
     "zero_page_x"
 )]
 #[test_case(
@@ -33,7 +34,7 @@ use test_case::test_case;
     |cpu| {
         cpu.mem_write(0x0110, 0x80);
     },
-    |cpu| (cpu.mem_read(0x0110), cpu.status.zero, cpu.status.carry, cpu.status.negative) => (0x00, true, true, false);
+    |cpu| (cpu.mem_read(0x0110), cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::CARRY), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x00, true, true, false);
     "absolute"
 )]
 #[test_case(
@@ -42,7 +43,7 @@ use test_case::test_case;
         cpu.register_x = 0x01;
         cpu.mem_write(0x0111, 0x80);
     },
-    |cpu| (cpu.mem_read(0x10), cpu.status.zero, cpu.status.carry, cpu.status.negative) => (0x00, true, true, false);
+    |cpu| (cpu.mem_read(0x10), cpu.status.contains(ProcessorStatus::ZERO), cpu.status.contains(ProcessorStatus::CARRY), cpu.status.contains(ProcessorStatus::NEGATIVE)) => (0x00, true, true, false);
     "absolute_x"
 )]
 fn test_asl(

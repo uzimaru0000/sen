@@ -1,12 +1,14 @@
 use std::fmt::Display;
 
 use addressing_mode::AddressingMode;
-use opecode::{OpCode, OPCODE_MAP};
+use interrupt::{Interrupt, BRK, NMI, RESET};
+use opecode::OPCODE_MAP;
 use status::ProcessorStatus;
 
 use crate::bus::{Bus, Mem};
 
 mod addressing_mode;
+mod interrupt;
 mod opecode;
 mod status;
 pub mod trace;
@@ -50,7 +52,7 @@ impl<M: Mem + Bus> CPU<M> {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0b0010_0100.into(),
+            status: ProcessorStatus::new(),
             bus,
         }
     }
@@ -60,11 +62,13 @@ impl<M: Mem + Bus> CPU<M> {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.status = 0b0010_0100.into();
+        self.status = ProcessorStatus::new();
+
+        let cycle = self.interrupt(RESET);
 
         self.program_counter = self.mem_read_u16(0xFFFC);
 
-        self.bus.tick(7);
+        self.bus.tick(cycle);
     }
 
     pub fn reset_with_pc(&mut self, pc: u16) {
@@ -72,7 +76,7 @@ impl<M: Mem + Bus> CPU<M> {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.status = 0b0010_0100.into();
+        self.status = ProcessorStatus::new();
 
         self.program_counter = pc;
 
@@ -81,414 +85,408 @@ impl<M: Mem + Bus> CPU<M> {
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
-        F: FnMut(&mut CPU<M>, &OpCode),
+        F: FnMut(&mut CPU<M>),
     {
         loop {
-            if let Some(_nmi) = self.bus.poll_nmi_status() {
-                self.interrupt_nmi();
-            }
-
-            let opcode = self.mem_read(self.program_counter);
-            let op = OPCODE_MAP.get(&opcode);
-
-            let op = op.unwrap();
-
-            callback(self, op);
-
-            self.program_counter = self.program_counter.wrapping_add(1);
-
-            let additional_cycle = match op.name {
-                "ADC" => {
-                    let is_crossed_page = self.adc(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "AND" => {
-                    let is_crossed_page = self.and(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "ASL" => {
-                    self.asl(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "BCC" => self.branch(!self.status.carry),
-                "BCS" => self.branch(self.status.carry),
-                "BEQ" => self.branch(self.status.zero),
-                "BIT" => {
-                    self.bit(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "BMI" => self.branch(self.status.negative),
-                "BNE" => self.branch(!self.status.zero),
-                "BPL" => self.branch(!self.status.negative),
-                "BRK" => {
-                    // if !self.status.interrupt {
-                    //     self.stack_push_u16(self.program_counter);
-                    //     let mut flag = self.status.clone();
-                    //     flag.set_break2_command(true);
-                    //     flag.set_break_command(true);
-
-                    //     self.stack_push(flag.into());
-                    //     self.status.set_interrupt(true);
-
-                    //     self.program_counter = self.mem_read_u16(0xFFFE);
-
-                    //     1
-                    // } else {
-                    //     0
-                    // }
-                    return;
-                }
-                "BVC" => self.branch(!self.status.overflow),
-                "BVS" => self.branch(self.status.overflow),
-                "CLC" => {
-                    self.clc();
-
-                    0
-                }
-                "CLD" => {
-                    self.cld();
-
-                    0
-                }
-                "CLI" => {
-                    self.cli();
-
-                    0
-                }
-                "CLV" => {
-                    self.clv();
-
-                    0
-                }
-                "CMP" => {
-                    let is_crossed_page = self.cmp(self.register_a, &op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "CPX" => {
-                    self.cmp(self.register_x, &op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "CPY" => {
-                    self.cmp(self.register_y, &op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "DCP" => {
-                    self.dec(&op.addr_mode);
-                    self.cmp(self.register_a, &op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "DEC" => {
-                    self.dec(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "DEX" => {
-                    self.dex();
-
-                    0
-                }
-                "DEY" => {
-                    self.dey();
-
-                    0
-                }
-                "EOR" => {
-                    let is_crossed_page = self.eor(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "INC" => {
-                    self.inc(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "INX" => {
-                    self.inx();
-
-                    0
-                }
-                "INY" => {
-                    self.iny();
-
-                    0
-                }
-                "ISB" => {
-                    self.inc(&op.addr_mode);
-                    self.sbc(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "JMP" => {
-                    self.jmp(&op.addr_mode);
-
-                    0
-                }
-                "JSR" => {
-                    self.jsr(&op.addr_mode);
-
-                    0
-                }
-                "LAX" => {
-                    let is_crossed_page = self.lda(&op.addr_mode);
-                    self.tax();
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "LDA" => {
-                    let is_crossed_page = self.lda(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "LDX" => {
-                    let is_crossed_page = self.ldx(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "LDY" => {
-                    let is_crossed_page = self.ldy(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "LSR" => {
-                    self.lsr(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "NOP" => {
-                    let (_, is_crossed_page) = if op.addr_mode == AddressingMode::NoneAddressing {
-                        (0, false)
-                    } else {
-                        self.get_operand_address(&op.addr_mode)
-                    };
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "ORA" => {
-                    let is_crossed_page = self.ora(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "PHA" => {
-                    self.pha();
-
-                    0
-                }
-                "PHP" => {
-                    self.php();
-
-                    0
-                }
-                "PLA" => {
-                    self.pla();
-
-                    0
-                }
-                "PLP" => {
-                    self.plp();
-
-                    0
-                }
-                "RLA" => {
-                    self.rol(&op.addr_mode);
-                    self.and(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "ROL" => {
-                    self.rol(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "ROR" => {
-                    self.ror(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "RRA" => {
-                    self.ror(&op.addr_mode);
-                    self.adc(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "RTI" => {
-                    self.rti();
-
-                    0
-                }
-                "RTS" => {
-                    self.rts();
-
-                    0
-                }
-                "SAX" => {
-                    self.sax(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "SBC" => {
-                    let is_crossed_page = self.sbc(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    if is_crossed_page {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                "SEC" => {
-                    self.sec();
-
-                    0
-                }
-                "SED" => {
-                    self.sed();
-
-                    0
-                }
-                "SEI" => {
-                    self.sei();
-
-                    0
-                }
-                "SLO" => {
-                    self.asl(&op.addr_mode);
-                    self.ora(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "STA" => {
-                    self.sta(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "STX" => {
-                    self.stx(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "STY" => {
-                    self.sty(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "SRE" => {
-                    self.lsr(&op.addr_mode);
-                    self.eor(&op.addr_mode);
-                    self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
-
-                    0
-                }
-                "TAX" => {
-                    self.tax();
-
-                    0
-                }
-                "TAY" => {
-                    self.tay();
-
-                    0
-                }
-                "TSX" => {
-                    self.tsx();
-
-                    0
-                }
-                "TXA" => {
-                    self.txa();
-
-                    0
-                }
-                "TXS" => {
-                    self.txs();
-
-                    0
-                }
-                "TYA" => {
-                    self.tya();
-
-                    0
-                }
-                _ => todo!(),
-            };
-
-            self.bus.tick(op.cycles + additional_cycle);
+            callback(self);
+            self.step();
         }
+    }
+
+    pub fn step(&mut self) {
+        if let Some(_nmi) = self.bus.poll_nmi_status() {
+            let cycle = self.interrupt(NMI);
+            self.bus.tick(cycle);
+        }
+
+        let opcode = self.mem_read(self.program_counter);
+        let op = OPCODE_MAP.get(&opcode);
+
+        let op = op.unwrap();
+
+        self.program_counter = self.program_counter.wrapping_add(1);
+
+        let additional_cycle = match op.name {
+            "ADC" => {
+                let is_crossed_page = self.adc(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "AND" => {
+                let is_crossed_page = self.and(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "ASL" => {
+                self.asl(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "BCC" => self.branch(!self.status.contains(ProcessorStatus::CARRY)),
+            "BCS" => self.branch(self.status.contains(ProcessorStatus::CARRY)),
+            "BEQ" => self.branch(self.status.contains(ProcessorStatus::ZERO)),
+            "BIT" => {
+                self.bit(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "BMI" => self.branch(self.status.contains(ProcessorStatus::NEGATIVE)),
+            "BNE" => self.branch(!self.status.contains(ProcessorStatus::ZERO)),
+            "BPL" => self.branch(!self.status.contains(ProcessorStatus::NEGATIVE)),
+            "BRK" => {
+                if !self.status.contains(ProcessorStatus::INTERRUPT) {
+                    self.interrupt(BRK)
+                } else {
+                    0
+                };
+                return;
+            }
+            "BVC" => self.branch(!self.status.contains(ProcessorStatus::OVERFLOW)),
+            "BVS" => self.branch(self.status.contains(ProcessorStatus::OVERFLOW)),
+            "CLC" => {
+                self.clc();
+
+                0
+            }
+            "CLD" => {
+                self.cld();
+
+                0
+            }
+            "CLI" => {
+                self.cli();
+
+                0
+            }
+            "CLV" => {
+                self.clv();
+
+                0
+            }
+            "CMP" => {
+                let is_crossed_page = self.cmp(self.register_a, &op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "CPX" => {
+                self.cmp(self.register_x, &op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "CPY" => {
+                self.cmp(self.register_y, &op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "DCP" => {
+                self.dec(&op.addr_mode);
+                self.cmp(self.register_a, &op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "DEC" => {
+                self.dec(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "DEX" => {
+                self.dex();
+
+                0
+            }
+            "DEY" => {
+                self.dey();
+
+                0
+            }
+            "EOR" => {
+                let is_crossed_page = self.eor(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "INC" => {
+                self.inc(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "INX" => {
+                self.inx();
+
+                0
+            }
+            "INY" => {
+                self.iny();
+
+                0
+            }
+            "ISB" => {
+                self.inc(&op.addr_mode);
+                self.sbc(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "JMP" => {
+                self.jmp(&op.addr_mode);
+
+                0
+            }
+            "JSR" => {
+                self.jsr(&op.addr_mode);
+
+                0
+            }
+            "LAX" => {
+                let is_crossed_page = self.lda(&op.addr_mode);
+                self.tax();
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "LDA" => {
+                let is_crossed_page = self.lda(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "LDX" => {
+                let is_crossed_page = self.ldx(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "LDY" => {
+                let is_crossed_page = self.ldy(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "LSR" => {
+                self.lsr(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "NOP" => {
+                let (_, is_crossed_page) = if op.addr_mode == AddressingMode::NoneAddressing {
+                    (0, false)
+                } else {
+                    self.get_operand_address(&op.addr_mode)
+                };
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "ORA" => {
+                let is_crossed_page = self.ora(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "PHA" => {
+                self.pha();
+
+                0
+            }
+            "PHP" => {
+                self.php();
+
+                0
+            }
+            "PLA" => {
+                self.pla();
+
+                0
+            }
+            "PLP" => {
+                self.plp();
+
+                0
+            }
+            "RLA" => {
+                self.rol(&op.addr_mode);
+                self.and(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "ROL" => {
+                self.rol(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "ROR" => {
+                self.ror(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "RRA" => {
+                self.ror(&op.addr_mode);
+                self.adc(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "RTI" => {
+                self.rti();
+
+                0
+            }
+            "RTS" => {
+                self.rts();
+
+                0
+            }
+            "SAX" => {
+                self.sax(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "SBC" => {
+                let is_crossed_page = self.sbc(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                if is_crossed_page {
+                    1
+                } else {
+                    0
+                }
+            }
+            "SEC" => {
+                self.sec();
+
+                0
+            }
+            "SED" => {
+                self.sed();
+
+                0
+            }
+            "SEI" => {
+                self.sei();
+
+                0
+            }
+            "SLO" => {
+                self.asl(&op.addr_mode);
+                self.ora(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "STA" => {
+                self.sta(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "STX" => {
+                self.stx(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "STY" => {
+                self.sty(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "SRE" => {
+                self.lsr(&op.addr_mode);
+                self.eor(&op.addr_mode);
+                self.program_counter = self.program_counter.wrapping_add((op.size - 1) as u16);
+
+                0
+            }
+            "TAX" => {
+                self.tax();
+
+                0
+            }
+            "TAY" => {
+                self.tay();
+
+                0
+            }
+            "TSX" => {
+                self.tsx();
+
+                0
+            }
+            "TXA" => {
+                self.txa();
+
+                0
+            }
+            "TXS" => {
+                self.txs();
+
+                0
+            }
+            "TYA" => {
+                self.tya();
+
+                0
+            }
+            _ => todo!(),
+        };
+
+        self.bus.tick(op.cycles + additional_cycle);
     }
 
     fn adc(&mut self, mode: &AddressingMode) -> bool {
@@ -496,7 +494,12 @@ impl<M: Mem + Bus> CPU<M> {
         let value = self.mem_read(addr);
 
         let (result, overflow1) = self.register_a.overflowing_add(value);
-        let (result, overflow2) = result.overflowing_add(if self.status.carry { 1 } else { 0 });
+        let (result, overflow2) =
+            result.overflowing_add(if self.status.contains(ProcessorStatus::CARRY) {
+                1
+            } else {
+                0
+            });
         let overflow = (self.register_a ^ result) & (value ^ result) & 0x80 != 0;
         let carry = overflow1 || overflow2;
 
@@ -721,7 +724,7 @@ impl<M: Mem + Bus> CPU<M> {
     fn php(&mut self) {
         let mut flag = self.status.clone();
         flag.set_break_command(true);
-        self.stack_push(flag.into());
+        self.stack_push(flag.bits());
     }
 
     fn pla(&mut self) {
@@ -730,7 +733,7 @@ impl<M: Mem + Bus> CPU<M> {
     }
 
     fn plp(&mut self) {
-        let mut flag = ProcessorStatus::from(self.stack_pop());
+        let mut flag = ProcessorStatus::from_bits_truncate(self.stack_pop());
         flag.set_break_command(false);
         flag.set_break2_command(true);
 
@@ -745,7 +748,12 @@ impl<M: Mem + Bus> CPU<M> {
             self.mem_read(addr)
         };
 
-        let result = (value << 1) | if self.status.carry { 1 } else { 0 };
+        let result = (value << 1)
+            | if self.status.contains(ProcessorStatus::CARRY) {
+                1
+            } else {
+                0
+            };
         let carry = value & 0x80 != 0;
 
         if *mode == AddressingMode::NoneAddressing {
@@ -766,7 +774,12 @@ impl<M: Mem + Bus> CPU<M> {
             self.mem_read(addr)
         };
 
-        let result = (value >> 1) | if self.status.carry { 0x80 } else { 0 };
+        let result = (value >> 1)
+            | if self.status.contains(ProcessorStatus::CARRY) {
+                0x80
+            } else {
+                0
+            };
         let carry = value & 0x01 != 0;
 
         if *mode == AddressingMode::NoneAddressing {
@@ -780,7 +793,7 @@ impl<M: Mem + Bus> CPU<M> {
     }
 
     fn rti(&mut self) {
-        let mut flag = ProcessorStatus::from(self.stack_pop());
+        let mut flag = ProcessorStatus::from_bits_truncate(self.stack_pop());
         flag.set_break_command(false);
         flag.set_break2_command(true);
 
@@ -803,7 +816,12 @@ impl<M: Mem + Bus> CPU<M> {
         let value = self.mem_read(addr);
 
         let (result, overflow1) = self.register_a.overflowing_sub(value);
-        let (result, overflow2) = result.overflowing_sub(if self.status.carry { 0 } else { 1 });
+        let (result, overflow2) =
+            result.overflowing_sub(if self.status.contains(ProcessorStatus::CARRY) {
+                0
+            } else {
+                1
+            });
         let overflow = (self.register_a & 0x80) != (value & 0x80)
             && (self.register_a & 0x80) != (result & 0x80);
         let carry = !(overflow1 || overflow2);
@@ -909,6 +927,18 @@ impl<M: Mem + Bus> CPU<M> {
         }
     }
 
+    fn interrupt(&mut self, interrupt: Interrupt) -> u8 {
+        self.stack_push_u16(self.program_counter);
+
+        let mask = interrupt.get_break_mask();
+        self.stack_push(self.status.bits() & mask);
+        self.status.set_interrupt(true);
+
+        self.program_counter = self.mem_read_u16(interrupt.get_address());
+
+        interrupt.get_cycles()
+    }
+
     pub(super) fn get_absolute_address(&mut self, mode: &AddressingMode, addr: u16) -> (u16, bool) {
         match mode {
             AddressingMode::ZeroPage => (self.mem_read(addr) as u16, false),
@@ -978,19 +1008,6 @@ impl<M: Mem + Bus> CPU<M> {
         }
     }
 
-    fn interrupt_nmi(&mut self) {
-        self.stack_push_u16(self.program_counter);
-
-        let mut flag = self.status.clone();
-        flag.set_break_command(false);
-        flag.set_break2_command(true);
-        self.stack_push(flag.into());
-        self.status.set_interrupt(true);
-
-        self.bus.tick(2);
-        self.program_counter = self.mem_read_u16(0xFFFA);
-    }
-
     fn check_page_crossed(&self, addr1: u16, addr2: u16) -> bool {
         addr1 & 0xFF00 != addr2 & 0xFF00
     }
@@ -998,7 +1015,7 @@ impl<M: Mem + Bus> CPU<M> {
 
 impl<M: Mem + Bus> Display for CPU<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let status: u8 = self.status.into();
+        let status: u8 = self.status.bits();
 
         write!(
             f,

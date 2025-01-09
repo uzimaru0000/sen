@@ -1,4 +1,11 @@
-use crate::{apu::APU, joypad::Joypad, ppu::PPU, rom::Rom, speaker::Speaker};
+use crate::{
+    apu::APU,
+    joypad::{register::Joypad, JoypadHandler},
+    ppu::PPU,
+    render::Renderer,
+    rom::Rom,
+    speaker::Speaker,
+};
 
 pub trait Mem {
     fn mem_read(&mut self, addr: u16) -> u8;
@@ -14,10 +21,10 @@ pub trait Bus {
     fn get_scanline(&self) -> u16;
 }
 
-pub struct NESBus<F, S>
+pub struct NESBus<S, J, R>
 where
-    F: FnMut(&PPU, &mut Joypad),
     S: Speaker,
+    J: JoypadHandler,
 {
     cpu_vram: [u8; 0x0800],
     prg_rom: Vec<u8>,
@@ -25,15 +32,17 @@ where
     apu: APU<S>,
     joypad: Joypad,
     cycles: usize,
-    gameloop_callback: F,
+    joypad_handler: J,
+    renderer: R,
 }
 
-impl<F, S> NESBus<F, S>
+impl<S, J, R> NESBus<S, J, R>
 where
-    F: FnMut(&PPU, &mut Joypad),
     S: Speaker,
+    J: JoypadHandler,
+    R: Renderer,
 {
-    pub fn new(rom: Rom, speaker: S, gameloop_callback: F) -> Self {
+    pub fn new(rom: Rom, speaker: S, joypad_handler: J, renderer: R) -> Self {
         let ppu = PPU::new(rom.chr_rom, rom.is_chr_ram, rom.screen_mirroring);
         let apu = APU::new(speaker);
         let joypad = Joypad::new();
@@ -44,8 +53,9 @@ where
             ppu,
             apu,
             joypad,
+            joypad_handler,
+            renderer,
             cycles: 0,
-            gameloop_callback,
         }
     }
 
@@ -83,10 +93,11 @@ const JOYPAD2_READ_REGISTERS: u16 = 0x4017;
 const ROM: u16 = 0x8000;
 const ROM_END: u16 = 0xFFFF;
 
-impl<F, S> Mem for NESBus<F, S>
+impl<S, J, R> Mem for NESBus<S, J, R>
 where
-    F: FnMut(&PPU, &mut Joypad),
     S: Speaker,
+    J: JoypadHandler,
+    R: Renderer,
 {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
@@ -195,10 +206,11 @@ where
     }
 }
 
-impl<F, S> Bus for NESBus<F, S>
+impl<S, J, R> Bus for NESBus<S, J, R>
 where
-    F: FnMut(&PPU, &mut Joypad),
     S: Speaker,
+    J: JoypadHandler,
+    R: Renderer,
 {
     fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;
@@ -208,7 +220,8 @@ where
         let nmi_after = self.ppu.get_nmi_interrupt().is_some();
 
         if !nmi_before && nmi_after {
-            (self.gameloop_callback)(&self.ppu, &mut self.joypad);
+            self.renderer.render(&self.ppu);
+            self.joypad_handler.handle(&mut self.joypad);
         }
     }
 
