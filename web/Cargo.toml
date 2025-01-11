@@ -1,0 +1,14 @@
+[package]
+name = "web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lib = { path = "../lib" }
+serde = { version = "1.0.217", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+ts-rs = "10.1.0"
+wasm-bindgen = "0.2.99"
+
+[lib]
+crate-type = ["cdylib"]

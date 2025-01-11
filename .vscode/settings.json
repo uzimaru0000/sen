@@ -1,4 +1,3 @@
 {
-    "editor.formatOnSave": true,
-    "deno.enable": true,
+    "editor.formatOnSave": true
 }
