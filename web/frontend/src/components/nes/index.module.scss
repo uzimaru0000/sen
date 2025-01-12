@@ -1,0 +1,23 @@
+.wrapper {
+  aspect-ratio: 1 / 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.nes {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  image-rendering: pixelated;
+}
+
+.cartridge {
+  position: absolute;
+  top: -2%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  image-rendering: pixelated;
+  z-index: 2;
+}

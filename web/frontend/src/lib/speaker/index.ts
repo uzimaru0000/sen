@@ -12,25 +12,24 @@ export class Speaker {
 
   constructor(private context: AudioContext) {
     this.gain = context.createGain();
-
-    createRectWave(context).then((node) => {
-      this.ch1 = node;
-      this.ch1.connect(this.gain);
-    });
-    createRectWave(context).then((node) => {
-      this.ch2 = node;
-      this.ch2.connect(this.gain);
-    });
-    createTriangleWave(context).then((node) => {
-      this.ch3 = node;
-      this.ch3.connect(this.gain);
-    });
-    createNoiseNode(context).then((node) => {
-      this.ch4 = node;
-      this.ch4.connect(this.gain);
-    });
-
     this.gain.connect(context.destination);
+
+    void this.initChannel();
+  }
+
+  private async initChannel() {
+    this.ch1 = await createRectWave(this.context);
+    this.ch1.connect(this.gain);
+    this.ch2 = await createRectWave(this.context);
+    this.ch2.connect(this.gain);
+    this.ch3 = await createTriangleWave(this.context);
+    this.ch3.connect(this.gain);
+    this.ch4 = await createNoiseNode(this.context);
+    this.ch4.connect(this.gain);
+  }
+
+  reset() {
+    void this.initChannel();
   }
 
   setVolume(volume: number) {
