@@ -1,0 +1,38 @@
+[config]
+# 必要に応じて環境変数や設定をここに追加
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.build-lib]
+# コマンドはシンプルに cargo build でもいいですし、--release をつけるなど調整
+command = "cargo"
+args = ["build", "--package", "lib"]
+
+[tasks.build-wasm]
+# wasm-pack でのビルドタスク例
+workspace = false
+script = [
+    "echo 'Building wasm in web ...'",
+    # 例えばリリースビルドなら
+    "cd web",
+    "wasm-pack build --release --target web --out-dir frontend/wasm/pkg",
+]
+dependencies = ["clean"]
+
+[tasks.build-frontend]
+# フロントエンドのビルド (npm または yarn 利用想定)
+workspace = false
+script = [
+    "echo 'Building frontend ...'",
+    "cd web/frontend",
+    "pnpm install",
+    "pnpm run build",
+]
+dependencies = ["build-wasm"]
+
+[tasks.build-all]
+# build-lib, build-wasm, build-frontend を依存タスクとしてまとめる例
+dependencies = ["clean", "build-lib", "build-wasm", "build-frontend"]
+description = "Build everything (lib + wasm + frontend)"

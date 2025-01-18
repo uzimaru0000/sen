@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # mainブランチへpushされたら実行
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      # 1. Rustのセットアップ
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # 2. Node.jsのセットアップ
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18 # 必要に応じてバージョンを変更
+
+      # 3. ビルド (cargo-makeで一括実行想定)
+      - name: Build (cargo-make)
+        run: |
+          rustup target add wasm32-unknown-unknown
+
+          # cargo make で一括ビルド
+          cargo make build-all
+
+      # 4. GitHub Pagesへのデプロイ
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # フロントエンドのビルド成果物が web/frontend/dist に生成される想定
+          publish_dir: web/frontend/dist
