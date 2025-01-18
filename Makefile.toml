@@ -34,5 +34,6 @@ dependencies = ["build-wasm"]
 
 [tasks.build-all]
 # build-lib, build-wasm, build-frontend を依存タスクとしてまとめる例
+workspace = false
 dependencies = ["clean", "build-lib", "build-wasm", "build-frontend"]
 description = "Build everything (lib + wasm + frontend)"
