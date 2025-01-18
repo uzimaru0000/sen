@@ -30,7 +30,11 @@ script = [
     "pnpm install",
     "pnpm run build",
 ]
-dependencies = ["build-wasm"]
+dependencies = ["build-wasm", "gen-types"]
+
+[tasks.gen-types]
+workspace = false
+script = ["cd web", "cargo test export_bindings_"]
 
 [tasks.build-all]
 # build-lib, build-wasm, build-frontend を依存タスクとしてまとめる例
