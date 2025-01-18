@@ -29,6 +29,9 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       # 3. ビルド (cargo-makeで一括実行想定)
       - name: Build (cargo-make)
         run: |
