@@ -6,7 +6,7 @@ on:
       - main # mainブランチへpushされたら実行
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +40,20 @@ jobs:
           # cargo make で一括ビルド
           cargo make build-all
 
-      # 4. GitHub Pagesへのデプロイ
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # フロントエンドのビルド成果物が web/frontend/dist に生成される想定
-          publish_dir: web/frontend/dist
+          path: web/frontend/dist
+
+  deploy:
+    needs: build
+    permissions:
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # アップロードされた成果物を GitHub Pages にデプロイ
+      - uses: actions/deploy-pages@v4
+        id: deployment
