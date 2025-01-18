@@ -17,7 +17,7 @@ script = [
     "echo 'Building wasm in web ...'",
     # 例えばリリースビルドなら
     "cd web",
-    "wasm-pack build --release --target web --out-dir frontend/wasm/pkg",
+    "wasm-pack build --release --target web --out-dir frontend/wasm",
 ]
 dependencies = ["clean"]
 
