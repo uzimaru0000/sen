@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: 18 # 必要に応じてバージョンを変更
 
+      - name: Install cargo-make
+        run: cargo install cargo-make
+
       # 3. ビルド (cargo-makeで一括実行想定)
       - name: Build (cargo-make)
         run: |
