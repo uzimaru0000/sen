@@ -4,11 +4,13 @@ import { TileMap } from "../TileMap";
 import tvTiles from "../../assets/tv.json";
 import coverTiles from "../../assets/cover.json";
 
-type Props = ComponentPropsWithRef<"canvas">;
+type Props = ComponentPropsWithRef<"canvas"> & {
+  onZoom: () => void;
+};
 
-export const TV: React.FC<Props> = ({ ref }) => {
+export const TV: React.FC<Props> = ({ ref, onZoom }) => {
   return (
-    <div className={styles.case}>
+    <div className={styles.case} onClick={onZoom}>
       <TileMap
         className={styles.tv}
         width={2}

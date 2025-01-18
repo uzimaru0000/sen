@@ -3,22 +3,23 @@ import styles from "./index.module.scss";
 import { useDraggable } from "@dnd-kit/core";
 
 type Props = {
+  isInsert: boolean;
   rom: File;
   x: number;
   y: number;
 };
-export const Cartridge: React.FC<Props> = ({ rom, x, y }) => {
+export const Cartridge: React.FC<Props> = ({ isInsert, rom, x, y }) => {
   const { isDragging, attributes, listeners, setNodeRef, transform } =
     useDraggable({
       id: rom.name,
       data: { type: "rom", file: rom },
     });
 
-  const finalX = `calc(${x}% + ${transform?.x ?? 0})`;
-  const finalY = `calc(${y}% + ${transform?.y ?? 0})`;
+  const finalX = `${x + (transform?.x ?? 0)}`;
+  const finalY = `${y + (transform?.y ?? 0)}`;
   const style = {
-    top: `${finalY}`,
-    left: `${finalX}`,
+    top: `${finalY}px`,
+    left: `${finalX}px`,
     cursor: isDragging ? "grabbing" : "grab",
   };
 
@@ -27,6 +28,7 @@ export const Cartridge: React.FC<Props> = ({ rom, x, y }) => {
       ref={setNodeRef}
       className={styles.wrapper}
       style={style}
+      hidden={isInsert}
       {...listeners}
       {...attributes}
     >

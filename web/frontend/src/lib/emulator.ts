@@ -26,13 +26,16 @@ export class Emulator {
     );
   }
 
+  setCanvas(canvas: HTMLCanvasElement) {
+    this.renderer.setCanvas(canvas);
+  }
+
   setMasterVolume(volume: number) {
     this.speaker.setVolume(volume);
   }
 
   start() {
-    this.emulator.reset();
-    this.speaker.reset();
+    this.reset();
 
     const run = () => {
       for (let i = 0; i < 10000; i++) {
@@ -51,5 +54,12 @@ export class Emulator {
     }
 
     cancelAnimationFrame(this.handler);
+    this.reset();
+  }
+
+  reset() {
+    this.emulator.reset();
+    this.speaker.reset();
+    this.renderer.reset();
   }
 }

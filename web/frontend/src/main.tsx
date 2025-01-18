@@ -2,7 +2,7 @@ import init from "../wasm";
 import { App } from "./App";
 import { createRoot } from "react-dom/client";
 
-const main2 = async () => {
+const main = async () => {
   await init();
 
   const rootDom = document.getElementById("root");
@@ -15,4 +15,4 @@ const main2 = async () => {
   root.render(<App />);
 };
 
-main2();
+main();

@@ -30,4 +30,17 @@ export class Renderer {
 
     ctx.putImageData(imageData, 0, 0);
   }
+
+  setCanvas(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+  }
+
+  reset() {
+    const ctx = this.canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  }
 }

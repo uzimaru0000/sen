@@ -20,11 +20,11 @@ type Rom = {
 
 export const App = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [emulator, setEmulator] = useState<Emulator>();
   const [roms, setRoms] = useState<Rom[]>([]);
-
-  const freeRoms = roms.filter((rom) => !rom.isInsert);
+  const [isZoom, setIsZoom] = useState(false);
 
   const handleAddRom = (file: File) => {
     const pos = {
@@ -70,8 +70,8 @@ export const App = () => {
             return {
               ...item,
               isInsert: true,
-              x: 0,
-              y: 0,
+              x: Math.random() * 100,
+              y: Math.random() * 100,
             };
           }
           return item;
@@ -95,34 +95,86 @@ export const App = () => {
 
     setEmulator(emulator);
   };
+  const handleReleaseEmulator = () => {
+    emulator?.stop();
+    setEmulator(undefined);
+    setRoms((prevItems) => {
+      return prevItems.map((item) => {
+        return {
+          ...item,
+          isInsert: false,
+        };
+      });
+    });
+  };
+  const handleZoom = () => {
+    if (!zoomCanvasRef.current || emulator === undefined) {
+      return;
+    }
+
+    emulator.setCanvas(zoomCanvasRef.current);
+    setIsZoom(true);
+  };
+  const handleZoomOut = () => {
+    if (!canvasRef.current || emulator === undefined) {
+      return;
+    }
+
+    emulator.setCanvas(canvasRef.current);
+    setIsZoom(false);
+  };
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div className={styles.app}>
-        <div className={styles.tiles}>
-          <TileMap
-            width={8}
-            height={8}
-            tiles={roomTiles.tiles}
-            rotates={roomTiles.rotates}
+        <div className={styles.layout}>
+          <div className={styles.tiles}>
+            <TileMap
+              width={8}
+              height={8}
+              tiles={roomTiles.tiles}
+              rotates={roomTiles.rotates}
+            />
+            <TileMap
+              width={8}
+              height={8}
+              tiles={objTiles.tiles}
+              rotates={objTiles.rotates}
+            />
+          </div>
+          <div className={styles.tv}>
+            <TV ref={canvasRef} onZoom={handleZoom} />
+          </div>
+          <div className={styles.nes}>
+            <NES inCartridge={!!emulator} onRelease={handleReleaseEmulator} />
+          </div>
+          <div className={styles.roms}>
+            {roms.map((rom) => (
+              <Cartridge
+                key={rom.file.name}
+                rom={rom.file}
+                x={rom.x}
+                y={rom.y}
+                isInsert={rom.isInsert}
+              />
+            ))}
+          </div>
+        </div>
+        <div
+          className={styles.zoomCanvasWrapper}
+          hidden={!isZoom}
+          onClick={handleZoomOut}
+        >
+          <canvas
+            ref={zoomCanvasRef}
+            className={styles.zoomCanvas}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            width="256"
+            height="240"
           />
-          <TileMap
-            width={8}
-            height={8}
-            tiles={objTiles.tiles}
-            rotates={objTiles.rotates}
-          />
-        </div>
-        <div className={styles.tv}>
-          <TV ref={canvasRef} />
-        </div>
-        <div className={styles.nes}>
-          <NES inCartridge={!!emulator} />
-        </div>
-        <div className={styles.roms}>
-          {freeRoms.map((rom) => (
-            <Cartridge key={rom.file.name} rom={rom.file} x={rom.x} y={rom.y} />
-          ))}
         </div>
       </div>
 

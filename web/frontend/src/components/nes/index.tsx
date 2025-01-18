@@ -4,8 +4,9 @@ import { useDroppable } from "@dnd-kit/core";
 
 type Props = {
   inCartridge: boolean;
+  onRelease: () => void;
 };
-export const NES: React.FC<Props> = ({ inCartridge }) => {
+export const NES: React.FC<Props> = ({ inCartridge, onRelease }) => {
   const { isOver, setNodeRef } = useDroppable({ id: "nes" });
 
   return (
@@ -13,6 +14,7 @@ export const NES: React.FC<Props> = ({ inCartridge }) => {
       ref={setNodeRef}
       className={styles.wrapper}
       style={{ opacity: isOver ? 0.5 : 1 }}
+      onClick={onRelease}
     >
       <TileMap
         className={styles.nes}
