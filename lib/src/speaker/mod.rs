@@ -1,4 +1,17 @@
-use crate::utils::noise::NoiseMode;
+#[derive(Debug, Clone)]
+pub enum NoiseMode {
+    Short,
+    Long,
+}
+
+impl Into<u8> for NoiseMode {
+    fn into(self) -> u8 {
+        match self {
+            NoiseMode::Short => 6,
+            NoiseMode::Long => 1,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum SpeakerEvent {

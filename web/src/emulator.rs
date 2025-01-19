@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use lib::{bus::NESBus, cpu::CPU, rom::Rom};
+use lib::emulator::Emulator;
 
 use crate::{
     joypad::{JsJoypadHandler, WebJoypadHandler},
@@ -10,7 +10,7 @@ use crate::{
 
 #[wasm_bindgen]
 pub struct WebEmulator {
-    cpu: CPU<NESBus<WebSpeaker, WebJoypadHandler, WebRenderer>>,
+    emulator: Emulator<WebSpeaker, WebJoypadHandler, WebRenderer>,
 }
 
 #[wasm_bindgen]
@@ -22,26 +22,23 @@ impl WebEmulator {
         handler: JsJoypadHandler,
         renderer: JsRenderer,
     ) -> Self {
-        let rom = Rom::new(&rom_data).unwrap();
-
-        let bus = NESBus::new(
-            rom,
-            WebSpeaker::new(speaker),
-            WebJoypadHandler::new(handler),
-            WebRenderer::new(renderer),
-        );
-        let cpu = CPU::new(bus);
-
-        Self { cpu }
+        Self {
+            emulator: Emulator::new(
+                rom_data,
+                WebSpeaker::new(speaker),
+                WebJoypadHandler::new(handler),
+                WebRenderer::new(renderer),
+            ),
+        }
     }
 
     #[wasm_bindgen]
     pub fn reset(&mut self) {
-        self.cpu.reset();
+        self.emulator.reset();
     }
 
     #[wasm_bindgen]
     pub fn step(&mut self) {
-        self.cpu.step();
+        self.emulator.step();
     }
 }

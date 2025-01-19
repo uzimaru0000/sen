@@ -1,3 +1,3 @@
 pub mod frame;
-pub(crate) mod palette;
-pub(crate) mod rect;
+pub(super) mod palette;
+pub(super) mod rect;

@@ -2,19 +2,19 @@ use crate::{
     apu::APU,
     joypad::{register::Joypad, JoypadHandler},
     ppu::PPU,
-    render::Renderer,
+    render::{utils::frame::Frame, Renderer},
     rom::Rom,
     speaker::Speaker,
 };
 
-pub trait Mem {
+pub(crate) trait Mem {
     fn mem_read(&mut self, addr: u16) -> u8;
     fn mem_write(&mut self, addr: u16, data: u8);
     fn mem_read_u16(&mut self, addr: u16) -> u16;
     fn mem_write_u16(&mut self, addr: u16, data: u16);
 }
 
-pub trait Bus {
+pub(crate) trait Bus {
     fn tick(&mut self, cycles: u8);
     fn poll_nmi_status(&mut self) -> Option<bool>;
     fn get_cycles(&self) -> (usize, usize);
@@ -25,6 +25,7 @@ pub struct NESBus<S, J, R>
 where
     S: Speaker,
     J: JoypadHandler,
+    R: Renderer,
 {
     cpu_vram: [u8; 0x0800],
     prg_rom: Vec<u8>,
@@ -42,7 +43,7 @@ where
     J: JoypadHandler,
     R: Renderer,
 {
-    pub fn new(rom: Rom, speaker: S, joypad_handler: J, renderer: R) -> Self {
+    pub(crate) fn new(rom: Rom, speaker: S, joypad_handler: J, renderer: R) -> Self {
         let ppu = PPU::new(rom.chr_rom, rom.is_chr_ram, rom.screen_mirroring);
         let apu = APU::new(speaker);
         let joypad = Joypad::new();
@@ -220,7 +221,9 @@ where
         let nmi_after = self.ppu.get_nmi_interrupt().is_some();
 
         if !nmi_before && nmi_after {
-            self.renderer.render(&self.ppu);
+            let mut frame = Frame::new();
+            frame.render(&self.ppu);
+            self.renderer.render(&frame);
             self.joypad_handler.handle(&mut self.joypad);
         }
     }

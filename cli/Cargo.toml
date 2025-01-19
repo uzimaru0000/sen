@@ -4,3 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.26", features = ["derive"] }
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+ctrlc = "3.4.5"
+image-to-ascii = "0.6.0"
+lib = { path = "../lib" }
+tokio = "1.43.0"
+
+[[bin]]
+name = "sen"
+path = "src/main.rs"

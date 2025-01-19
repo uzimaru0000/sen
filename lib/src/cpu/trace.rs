@@ -13,7 +13,7 @@ const NON_READABLE_ADDR: Lazy<Vec<u16>> = Lazy::new(|| {
     ]
 });
 
-pub fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
+pub(crate) fn trace<M: Mem + Bus>(cpu: &mut CPU<M>) -> String {
     let code = cpu.mem_read(cpu.program_counter);
     let op = OPCODE_MAP.get(&code).unwrap();
 

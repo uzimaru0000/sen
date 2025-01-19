@@ -1,10 +1,9 @@
-pub mod apu;
-pub mod bus;
-pub mod cpu;
+mod apu;
+mod bus;
+mod cpu;
 pub mod emulator;
 pub mod joypad;
-pub mod ppu;
+mod ppu;
 pub mod render;
-pub mod rom;
+mod rom;
 pub mod speaker;
-pub mod utils;

@@ -11,7 +11,7 @@ mod addressing_mode;
 mod interrupt;
 mod opecode;
 mod status;
-pub mod trace;
+mod trace;
 
 #[cfg(test)]
 mod test;

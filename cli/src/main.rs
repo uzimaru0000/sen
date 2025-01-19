@@ -1,3 +1,7 @@
+use clap::Parser;
+use cli::app::App;
+
 fn main() {
-    println!("Hello, world!");
+    let app = App::parse();
+    app.run().unwrap();
 }

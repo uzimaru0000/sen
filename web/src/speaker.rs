@@ -1,12 +1,7 @@
-use lib::{
-    speaker::{Speaker, SpeakerEvent},
-    utils::noise::NoiseMode,
-};
+use lib::speaker::{NoiseMode, Speaker, SpeakerEvent};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
-
-use crate::utils::log;
 
 #[derive(TS, Serialize, Deserialize)]
 #[ts(export)]

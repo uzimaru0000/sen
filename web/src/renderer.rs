@@ -1,7 +1,4 @@
-use lib::{
-    ppu::PPU,
-    render::{utils::frame::Frame, Renderer},
-};
+use lib::render::{utils::frame::Frame, Renderer};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
@@ -21,25 +18,19 @@ struct RenderBuffer {
 }
 
 pub struct WebRenderer {
-    frame: Frame,
     renderer: JsRenderer,
 }
 
 impl WebRenderer {
     pub fn new(renderer: JsRenderer) -> Self {
-        Self {
-            renderer,
-            frame: Frame::new(),
-        }
+        Self { renderer }
     }
 }
 
 impl Renderer for WebRenderer {
-    fn render(&mut self, ppu: &PPU) {
-        self.frame.render(ppu);
-
+    fn render(&mut self, frame: &Frame) {
         let buf = RenderBuffer {
-            data: self.frame.data.clone(),
+            data: frame.data.clone(),
         };
         let frame_value = serde_wasm_bindgen::to_value(&buf).unwrap();
         self.renderer.render(&frame_value);

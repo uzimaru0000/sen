@@ -26,7 +26,7 @@ bitflags! {
     }
 }
 
-pub enum SweepDirection {
+enum SweepDirection {
     Increase,
     Decrease,
 }

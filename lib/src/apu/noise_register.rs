@@ -1,6 +1,5 @@
+use crate::speaker::NoiseMode;
 use bitflags::bitflags;
-
-use crate::utils::noise::NoiseMode;
 
 bitflags! {
     struct VolumeControl: u8 {

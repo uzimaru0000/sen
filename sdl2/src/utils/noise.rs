@@ -1,8 +1,4 @@
-#[derive(Debug, Clone)]
-pub enum NoiseMode {
-    Short,
-    Long,
-}
+use crate::speaker::NoiseMode;
 
 pub struct NoiseGenerator {
     shift_register: u16,
@@ -13,10 +9,7 @@ impl NoiseGenerator {
     pub fn new(mode: NoiseMode) -> Self {
         Self {
             shift_register: 1,
-            bit: match mode {
-                NoiseMode::Short => 6,
-                NoiseMode::Long => 1,
-            },
+            bit: mode.into(),
         }
     }
 
