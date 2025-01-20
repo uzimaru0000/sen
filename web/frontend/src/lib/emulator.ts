@@ -24,6 +24,7 @@ export class Emulator {
       this.joypadHandler,
       this.renderer
     );
+    this.speaker.setVolume(0.5);
   }
 
   setCanvas(canvas: HTMLCanvasElement) {
