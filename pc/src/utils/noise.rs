@@ -1,4 +1,4 @@
-use crate::speaker::NoiseMode;
+use lib::speaker::NoiseMode;
 
 pub struct NoiseGenerator {
     shift_register: u16,

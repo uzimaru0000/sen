@@ -1,26 +1,16 @@
 use std::{
-    collections::HashSet,
     io,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc,
     },
-    thread,
-    time::Duration,
 };
 
 use clap::Parser;
-use crossterm::{
-    event::{self, KeyCode, KeyModifiers},
-    terminal::size,
-};
+use crossterm::terminal::size;
 use lib::emulator::Emulator;
 
-use crate::{
-    joypad::{CliJoypadHandler, InputState},
-    renderer::CliRenderer,
-    speaker::CliSpeaker,
-};
+use crate::{joypad::CliJoypadHandler, renderer::CliRenderer, speaker::CliSpeaker};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

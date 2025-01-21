@@ -1,11 +1,11 @@
+use crate::utils::noise::NoiseGenerator;
+
+use lib::speaker::NoiseMode;
+use sdl2::audio::AudioCallback;
 use std::{
     sync::mpsc::{channel, Receiver, Sender},
     time::Duration,
 };
-
-use sdl2::audio::AudioCallback;
-
-use crate::utils::noise::{NoiseGenerator, NoiseMode};
 
 pub struct NoiseNote {
     hz: f32,

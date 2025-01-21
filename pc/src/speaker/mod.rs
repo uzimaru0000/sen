@@ -5,7 +5,7 @@ use sdl2::audio::AudioDevice;
 use square_wave::{SquareNote, SquareWave};
 use triangle_wave::{TriangleNote, TriangleWave};
 
-use super::{Speaker, SpeakerEvent};
+use lib::speaker::{Speaker, SpeakerEvent};
 
 mod noise;
 mod square_wave;

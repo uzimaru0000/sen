@@ -1,10 +1,9 @@
+use lib::render::{utils::frame::Frame, Renderer};
 use sdl2::{
     pixels::PixelFormatEnum,
     render::{Canvas, TextureCreator},
     video::{Window, WindowContext},
 };
-
-use super::{utils::frame::Frame, Renderer};
 
 pub struct Sdl2Renderer {
     canvas: Canvas<Window>,

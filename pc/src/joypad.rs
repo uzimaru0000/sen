@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
+use lib::joypad::{button::JoypadButton, register::Joypad, JoypadHandler};
 use once_cell::sync::Lazy;
 use sdl2::{event::Event, keyboard::Keycode, EventPump};
-
-use super::{button::JoypadButton, register::Joypad, JoypadHandler};
+use std::collections::HashMap;
 
 const KEY_MAP: Lazy<HashMap<Keycode, JoypadButton>> = Lazy::new(|| {
     let mut key_map = HashMap::new();
